@@ -59,7 +59,7 @@ Kopiere `.env.example` nach `.env.local`:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
-NEXT_PUBLIC_OPENROUTESERVICE_API_KEY=
+OPENROUTESERVICE_API_KEY=
 NEXT_PUBLIC_MAPTILER_KEY=
 GEMINI_API_KEY=
 ```
@@ -71,7 +71,7 @@ Pflicht für Supabase:
 
 Optional:
 
-- `NEXT_PUBLIC_OPENROUTESERVICE_API_KEY`: aktiviert spätere Routenberechnung
+- `OPENROUTESERVICE_API_KEY`: aktiviert Routing über die serverseitige API-Route
 - `NEXT_PUBLIC_MAPTILER_KEY`: nutzt MapTiler statt OpenStreetMap-Fallback
 - `GEMINI_API_KEY`: serverseitig, aktiviert AI-Generierung über `/api/ai/generate`
 
@@ -127,7 +127,7 @@ ausführen, während ein User angemeldet ist, weil RLS `auth.uid()` verwendet.
 2. Environment Variables in Vercel setzen:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - optional `NEXT_PUBLIC_OPENROUTESERVICE_API_KEY`
+   - optional `OPENROUTESERVICE_API_KEY`
    - optional `NEXT_PUBLIC_MAPTILER_KEY`
    - optional `GEMINI_API_KEY`
 3. Deploy auslösen.

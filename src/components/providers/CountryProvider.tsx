@@ -35,6 +35,11 @@ import type {
 
 type DataSource = "supabase" | "local";
 
+type ServerCapabilities = {
+  ai: boolean;
+  routing: boolean;
+};
+
 type TravelContextValue = TravelState & {
   isLoading: boolean;
   error: string | null;
@@ -173,16 +178,20 @@ export function CountryProvider({ children }: { children: ReactNode }) {
   const [dataSource, setDataSource] = useState<DataSource>(
     isSupabaseConfigured ? "supabase" : "local",
   );
+  const [serverCapabilities, setServerCapabilities] = useState<ServerCapabilities>({
+    ai: false,
+    routing: false,
+  });
 
   const capabilityStatus = useMemo(
     () => ({
       supabase: isSupabaseConfigured && dataSource === "supabase",
       weather: true,
-      routing: Boolean(process.env.NEXT_PUBLIC_OPENROUTESERVICE_API_KEY),
-      ai: false,
+      routing: serverCapabilities.routing,
+      ai: serverCapabilities.ai,
       maptiler: Boolean(process.env.NEXT_PUBLIC_MAPTILER_KEY),
     }),
-    [dataSource],
+    [dataSource, serverCapabilities],
   );
 
   const persist = useCallback((updater: (current: TravelState) => TravelState) => {
@@ -230,6 +239,20 @@ export function CountryProvider({ children }: { children: ReactNode }) {
 
     return () => window.clearTimeout(timer);
   }, [refreshCountries]);
+
+  useEffect(() => {
+    fetch("/api/health")
+      .then((response) => response.json())
+      .then((data: Partial<ServerCapabilities>) => {
+        setServerCapabilities({
+          ai: Boolean(data.ai),
+          routing: Boolean(data.routing),
+        });
+      })
+      .catch(() => {
+        setServerCapabilities({ ai: false, routing: false });
+      });
+  }, []);
 
   useEffect(() => {
     if (!supabase) return;

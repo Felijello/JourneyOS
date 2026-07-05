@@ -71,7 +71,7 @@ export function SettingsPage() {
           description={
             capabilityStatus.routing
               ? "OpenRouteService-Key ist vorhanden."
-              : "NEXT_PUBLIC_OPENROUTESERVICE_API_KEY fehlt. Routing bleibt vorbereitet."
+              : "OPENROUTESERVICE_API_KEY fehlt serverseitig. Routing bleibt vorbereitet."
           }
           icon={<Route size={22} />}
           title="Routing"
