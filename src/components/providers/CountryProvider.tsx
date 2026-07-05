@@ -12,8 +12,26 @@ import {
 import { getCoordinatesForCountry, seedTravelState } from "@/lib/country-options";
 import {
   isSupabaseConfigured,
+  mapAiGenerationFromRow,
+  mapAiGenerationToRow,
   mapCountryFromRow,
   mapCountryToRow,
+  mapPackingItemFromRow,
+  mapPackingItemToRow,
+  mapPhotoFromRow,
+  mapPhotoToRow,
+  mapPlaceFromRow,
+  mapPlaceToRow,
+  mapRouteFromRow,
+  mapRouteToRow,
+  mapSavedLinkFromRow,
+  mapSavedLinkToRow,
+  mapTripDayFromRow,
+  mapTripDayItemFromRow,
+  mapTripDayItemToRow,
+  mapTripDayToRow,
+  mapTripFromRow,
+  mapTripToRow,
   supabase,
 } from "@/lib/supabase/client";
 import { getIsoNow } from "@/lib/utils";
@@ -24,6 +42,8 @@ import type {
   PackingItem,
   Place,
   PlaceFormInput,
+  RouteFormInput,
+  RoutePlan,
   SavedLink,
   TravelPhoto,
   TravelState,
@@ -60,28 +80,31 @@ type TravelContextValue = TravelState & {
   createTrip: (input: TripFormInput) => Promise<Trip>;
   updateTrip: (id: string, input: TripFormInput) => Promise<Trip>;
   deleteTrip: (id: string) => Promise<void>;
-  createTripDay: (input: Omit<TripDay, "id" | "createdAt" | "updatedAt">) => TripDay;
-  updateTripDay: (id: string, input: Partial<TripDay>) => void;
+  createTripDay: (
+    input: Omit<TripDay, "id" | "createdAt" | "updatedAt">,
+  ) => Promise<TripDay>;
+  updateTripDay: (id: string, input: Partial<TripDay>) => Promise<void>;
   createTripDayItem: (
     input: Omit<TripDayItem, "id" | "createdAt" | "updatedAt">,
-  ) => TripDayItem;
-  updateTripDayItem: (id: string, input: Partial<TripDayItem>) => void;
-  deleteTripDayItem: (id: string) => void;
+  ) => Promise<TripDayItem>;
+  updateTripDayItem: (id: string, input: Partial<TripDayItem>) => Promise<void>;
+  deleteTripDayItem: (id: string) => Promise<void>;
   createSavedLink: (
     input: Omit<SavedLink, "id" | "createdAt" | "updatedAt">,
-  ) => SavedLink;
-  deleteSavedLink: (id: string) => void;
+  ) => Promise<SavedLink>;
+  deleteSavedLink: (id: string) => Promise<void>;
   createPackingItem: (
     input: Omit<PackingItem, "id" | "createdAt" | "updatedAt">,
-  ) => PackingItem;
-  togglePackingItem: (id: string) => void;
-  deletePackingItem: (id: string) => void;
+  ) => Promise<PackingItem>;
+  togglePackingItem: (id: string) => Promise<void>;
+  deletePackingItem: (id: string) => Promise<void>;
   createPhoto: (
     input: Omit<TravelPhoto, "id" | "createdAt" | "updatedAt">,
-  ) => TravelPhoto;
+  ) => Promise<TravelPhoto>;
+  createRoute: (input: RouteFormInput) => Promise<RoutePlan>;
   createAiGeneration: (
     input: Omit<AiGeneration, "id" | "createdAt">,
-  ) => AiGeneration;
+  ) => Promise<AiGeneration>;
   refreshCountries: () => Promise<void>;
 };
 
@@ -171,6 +194,24 @@ function enrichCountryInput(input: CountryFormInput): CountryFormInput {
   };
 }
 
+async function requireSupabaseUser() {
+  if (!supabase) throw new Error("Supabase ist nicht konfiguriert.");
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error) throw new Error(error.message);
+  if (!user) {
+    throw new Error(
+      "Bitte melde dich an, bevor du Daten in Supabase speicherst.",
+    );
+  }
+
+  return user;
+}
+
 export function CountryProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<TravelState>(() => seedTravelState);
   const [isLoading, setIsLoading] = useState(true);
@@ -215,17 +256,68 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const { data, error: requestError } = await supabase
-      .from("countries")
-      .select("*")
-      .order("updated_at", { ascending: false });
+    const [
+      countriesResult,
+      placesResult,
+      tripsResult,
+      tripDaysResult,
+      tripDayItemsResult,
+      photosResult,
+      routesResult,
+      savedLinksResult,
+      packingItemsResult,
+      aiGenerationsResult,
+    ] = await Promise.all([
+      supabase.from("countries").select("*").order("updated_at", { ascending: false }),
+      supabase.from("places").select("*").order("updated_at", { ascending: false }),
+      supabase.from("trips").select("*").order("updated_at", { ascending: false }),
+      supabase.from("trip_days").select("*").order("day_number", { ascending: true }),
+      supabase
+        .from("trip_day_items")
+        .select("*")
+        .order("sort_order", { ascending: true }),
+      supabase.from("photos").select("*").order("created_at", { ascending: false }),
+      supabase.from("routes").select("*").order("updated_at", { ascending: false }),
+      supabase.from("saved_links").select("*").order("updated_at", { ascending: false }),
+      supabase
+        .from("packing_items")
+        .select("*")
+        .order("updated_at", { ascending: false }),
+      supabase
+        .from("ai_generations")
+        .select("*")
+        .order("created_at", { ascending: false }),
+    ]);
+
+    const requestError =
+      countriesResult.error ??
+      placesResult.error ??
+      tripsResult.error ??
+      tripDaysResult.error ??
+      tripDayItemsResult.error ??
+      photosResult.error ??
+      routesResult.error ??
+      savedLinksResult.error ??
+      packingItemsResult.error ??
+      aiGenerationsResult.error;
 
     if (requestError) {
       setError(`${requestError.message} · Lokaler Demo-Modus bleibt aktiv.`);
       setState(localState);
       setDataSource("local");
     } else {
-      setState({ ...localState, countries: (data ?? []).map(mapCountryFromRow) });
+      setState({
+        countries: (countriesResult.data ?? []).map(mapCountryFromRow),
+        places: (placesResult.data ?? []).map(mapPlaceFromRow),
+        trips: (tripsResult.data ?? []).map(mapTripFromRow),
+        tripDays: (tripDaysResult.data ?? []).map(mapTripDayFromRow),
+        tripDayItems: (tripDayItemsResult.data ?? []).map(mapTripDayItemFromRow),
+        photos: (photosResult.data ?? []).map(mapPhotoFromRow),
+        routes: (routesResult.data ?? []).map(mapRouteFromRow),
+        savedLinks: (savedLinksResult.data ?? []).map(mapSavedLinkFromRow),
+        packingItems: (packingItemsResult.data ?? []).map(mapPackingItemFromRow),
+        aiGenerations: (aiGenerationsResult.data ?? []).map(mapAiGenerationFromRow),
+      });
       setDataSource("supabase");
     }
 
@@ -271,6 +363,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       const input = enrichCountryInput(rawInput);
 
       if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
         const { data, error: requestError } = await supabase
           .from("countries")
           .insert(mapCountryToRow(input))
@@ -296,6 +389,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       const input = enrichCountryInput(rawInput);
 
       if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
         const { data, error: requestError } = await supabase
           .from("countries")
           .update(mapCountryToRow(input))
@@ -331,6 +425,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
   const deleteCountry = useCallback(
     async (id: string) => {
       if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
         const { error: requestError } = await supabase
           .from("countries")
           .delete()
@@ -351,15 +446,49 @@ export function CountryProvider({ children }: { children: ReactNode }) {
 
   const createPlace = useCallback(
     async (input: PlaceFormInput) => {
+      if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
+        const { data, error: requestError } = await supabase
+          .from("places")
+          .insert(mapPlaceToRow(input))
+          .select("*")
+          .single();
+
+        if (requestError) throw new Error(requestError.message);
+
+        const place = mapPlaceFromRow(data);
+        persist((current) => ({ ...current, places: [place, ...current.places] }));
+        return place;
+      }
+
       const place = withDates({ ...input, userId: null }) as Place;
       persist((current) => ({ ...current, places: [place, ...current.places] }));
       return place;
     },
-    [persist],
+    [dataSource, persist],
   );
 
   const updatePlace = useCallback(
     async (id: string, input: PlaceFormInput) => {
+      if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
+        const { data, error: requestError } = await supabase
+          .from("places")
+          .update(mapPlaceToRow(input))
+          .eq("id", id)
+          .select("*")
+          .single();
+
+        if (requestError) throw new Error(requestError.message);
+
+        const place = mapPlaceFromRow(data);
+        persist((current) => ({
+          ...current,
+          places: current.places.map((item) => (item.id === id ? place : item)),
+        }));
+        return place;
+      }
+
       const existing = state.places.find((place) => place.id === id);
       if (!existing) throw new Error("Ort wurde nicht gefunden.");
       const place = { ...existing, ...input, updatedAt: getIsoNow() };
@@ -369,11 +498,20 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       }));
       return place;
     },
-    [persist, state.places],
+    [dataSource, persist, state.places],
   );
 
   const deletePlace = useCallback(
     async (id: string) => {
+      if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
+        const { error: requestError } = await supabase
+          .from("places")
+          .delete()
+          .eq("id", id);
+        if (requestError) throw new Error(requestError.message);
+      }
+
       persist((current) => ({
         ...current,
         places: current.places.filter((place) => place.id !== id),
@@ -382,20 +520,54 @@ export function CountryProvider({ children }: { children: ReactNode }) {
         ),
       }));
     },
-    [persist],
+    [dataSource, persist],
   );
 
   const createTrip = useCallback(
     async (input: TripFormInput) => {
+      if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
+        const { data, error: requestError } = await supabase
+          .from("trips")
+          .insert(mapTripToRow(input))
+          .select("*")
+          .single();
+
+        if (requestError) throw new Error(requestError.message);
+
+        const trip = mapTripFromRow(data);
+        persist((current) => ({ ...current, trips: [trip, ...current.trips] }));
+        return trip;
+      }
+
       const trip = withDates({ ...input, userId: null }) as Trip;
       persist((current) => ({ ...current, trips: [trip, ...current.trips] }));
       return trip;
     },
-    [persist],
+    [dataSource, persist],
   );
 
   const updateTrip = useCallback(
     async (id: string, input: TripFormInput) => {
+      if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
+        const { data, error: requestError } = await supabase
+          .from("trips")
+          .update(mapTripToRow(input))
+          .eq("id", id)
+          .select("*")
+          .single();
+
+        if (requestError) throw new Error(requestError.message);
+
+        const trip = mapTripFromRow(data);
+        persist((current) => ({
+          ...current,
+          trips: current.trips.map((item) => (item.id === id ? trip : item)),
+        }));
+        return trip;
+      }
+
       const existing = state.trips.find((trip) => trip.id === id);
       if (!existing) throw new Error("Trip wurde nicht gefunden.");
       const trip = { ...existing, ...input, updatedAt: getIsoNow() };
@@ -405,11 +577,20 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       }));
       return trip;
     },
-    [persist, state.trips],
+    [dataSource, persist, state.trips],
   );
 
   const deleteTrip = useCallback(
     async (id: string) => {
+      if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
+        const { error: requestError } = await supabase
+          .from("trips")
+          .delete()
+          .eq("id", id);
+        if (requestError) throw new Error(requestError.message);
+      }
+
       persist((current) => {
         const dayIds = current.tripDays
           .filter((day) => day.tripId === id)
@@ -426,20 +607,49 @@ export function CountryProvider({ children }: { children: ReactNode }) {
         };
       });
     },
-    [persist],
+    [dataSource, persist],
   );
 
   const createTripDay = useCallback(
-    (input: Omit<TripDay, "id" | "createdAt" | "updatedAt">) => {
+    async (input: Omit<TripDay, "id" | "createdAt" | "updatedAt">) => {
+      if (supabase && dataSource === "supabase") {
+        const user = await requireSupabaseUser();
+        const { data, error: requestError } = await supabase
+          .from("trip_days")
+          .insert(mapTripDayToRow({ ...input, userId: user.id }))
+          .select("*")
+          .single();
+
+        if (requestError) throw new Error(requestError.message);
+
+        const day = mapTripDayFromRow(data);
+        persist((current) => ({ ...current, tripDays: [...current.tripDays, day] }));
+        return day;
+      }
+
       const day = withDates(input) as TripDay;
       persist((current) => ({ ...current, tripDays: [...current.tripDays, day] }));
       return day;
     },
-    [persist],
+    [dataSource, persist],
   );
 
   const updateTripDay = useCallback(
-    (id: string, input: Partial<TripDay>) => {
+    async (id: string, input: Partial<TripDay>) => {
+      if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
+        const { error: requestError } = await supabase
+          .from("trip_days")
+          .update({
+            date: input.date ?? undefined,
+            title: input.title ?? undefined,
+            plan_text: input.planText ?? undefined,
+          })
+          .eq("id", id);
+
+        if (requestError) throw new Error(requestError.message);
+      }
+
       persist((current) => ({
         ...current,
         tripDays: current.tripDays.map((day) =>
@@ -447,11 +657,29 @@ export function CountryProvider({ children }: { children: ReactNode }) {
         ),
       }));
     },
-    [persist],
+    [dataSource, persist],
   );
 
   const createTripDayItem = useCallback(
-    (input: Omit<TripDayItem, "id" | "createdAt" | "updatedAt">) => {
+    async (input: Omit<TripDayItem, "id" | "createdAt" | "updatedAt">) => {
+      if (supabase && dataSource === "supabase") {
+        const user = await requireSupabaseUser();
+        const { data, error: requestError } = await supabase
+          .from("trip_day_items")
+          .insert(mapTripDayItemToRow({ ...input, userId: user.id }))
+          .select("*")
+          .single();
+
+        if (requestError) throw new Error(requestError.message);
+
+        const item = mapTripDayItemFromRow(data);
+        persist((current) => ({
+          ...current,
+          tripDayItems: [...current.tripDayItems, item],
+        }));
+        return item;
+      }
+
       const item = withDates(input) as TripDayItem;
       persist((current) => ({
         ...current,
@@ -459,11 +687,29 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       }));
       return item;
     },
-    [persist],
+    [dataSource, persist],
   );
 
   const updateTripDayItem = useCallback(
-    (id: string, input: Partial<TripDayItem>) => {
+    async (id: string, input: Partial<TripDayItem>) => {
+      if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
+        const { error: requestError } = await supabase
+          .from("trip_day_items")
+          .update({
+            place_id: input.placeId ?? undefined,
+            title: input.title ?? undefined,
+            type: input.type ?? undefined,
+            start_time: input.startTime ?? undefined,
+            end_time: input.endTime ?? undefined,
+            notes: input.notes ?? undefined,
+            sort_order: input.sortOrder ?? undefined,
+          })
+          .eq("id", id);
+
+        if (requestError) throw new Error(requestError.message);
+      }
+
       persist((current) => ({
         ...current,
         tripDayItems: current.tripDayItems.map((item) =>
@@ -471,43 +717,96 @@ export function CountryProvider({ children }: { children: ReactNode }) {
         ),
       }));
     },
-    [persist],
+    [dataSource, persist],
   );
 
   const deleteTripDayItem = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
+        const { error: requestError } = await supabase
+          .from("trip_day_items")
+          .delete()
+          .eq("id", id);
+        if (requestError) throw new Error(requestError.message);
+      }
+
       persist((current) => ({
         ...current,
         tripDayItems: current.tripDayItems.filter((item) => item.id !== id),
       }));
     },
-    [persist],
+    [dataSource, persist],
   );
 
   const createSavedLink = useCallback(
-    (input: Omit<SavedLink, "id" | "createdAt" | "updatedAt">) => {
-      const link = withDates({
+    async (input: Omit<SavedLink, "id" | "createdAt" | "updatedAt">) => {
+      const normalizedInput = {
         ...input,
         provider: input.provider || inferProvider(input.url),
-      }) as SavedLink;
+      };
+
+      if (supabase && dataSource === "supabase") {
+        const user = await requireSupabaseUser();
+        const { data, error: requestError } = await supabase
+          .from("saved_links")
+          .insert(mapSavedLinkToRow({ ...normalizedInput, userId: user.id }))
+          .select("*")
+          .single();
+
+        if (requestError) throw new Error(requestError.message);
+
+        const link = mapSavedLinkFromRow(data);
+        persist((current) => ({ ...current, savedLinks: [link, ...current.savedLinks] }));
+        return link;
+      }
+
+      const link = withDates(normalizedInput) as SavedLink;
       persist((current) => ({ ...current, savedLinks: [link, ...current.savedLinks] }));
       return link;
     },
-    [persist],
+    [dataSource, persist],
   );
 
   const deleteSavedLink = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
+        const { error: requestError } = await supabase
+          .from("saved_links")
+          .delete()
+          .eq("id", id);
+        if (requestError) throw new Error(requestError.message);
+      }
+
       persist((current) => ({
         ...current,
         savedLinks: current.savedLinks.filter((link) => link.id !== id),
       }));
     },
-    [persist],
+    [dataSource, persist],
   );
 
   const createPackingItem = useCallback(
-    (input: Omit<PackingItem, "id" | "createdAt" | "updatedAt">) => {
+    async (input: Omit<PackingItem, "id" | "createdAt" | "updatedAt">) => {
+      if (supabase && dataSource === "supabase") {
+        const user = await requireSupabaseUser();
+        const { data, error: requestError } = await supabase
+          .from("packing_items")
+          .insert(mapPackingItemToRow({ ...input, userId: user.id }))
+          .select("*")
+          .single();
+
+        if (requestError) throw new Error(requestError.message);
+
+        const item = mapPackingItemFromRow(data);
+        persist((current) => ({
+          ...current,
+          packingItems: [item, ...current.packingItems],
+        }));
+        return item;
+      }
+
       const item = withDates(input) as PackingItem;
       persist((current) => ({
         ...current,
@@ -515,11 +814,23 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       }));
       return item;
     },
-    [persist],
+    [dataSource, persist],
   );
 
   const togglePackingItem = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      const existing = state.packingItems.find((item) => item.id === id);
+      if (!existing) return;
+
+      if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
+        const { error: requestError } = await supabase
+          .from("packing_items")
+          .update({ is_packed: !existing.isPacked })
+          .eq("id", id);
+        if (requestError) throw new Error(requestError.message);
+      }
+
       persist((current) => ({
         ...current,
         packingItems: current.packingItems.map((item) =>
@@ -529,30 +840,96 @@ export function CountryProvider({ children }: { children: ReactNode }) {
         ),
       }));
     },
-    [persist],
+    [dataSource, persist, state.packingItems],
   );
 
   const deletePackingItem = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
+        const { error: requestError } = await supabase
+          .from("packing_items")
+          .delete()
+          .eq("id", id);
+        if (requestError) throw new Error(requestError.message);
+      }
+
       persist((current) => ({
         ...current,
         packingItems: current.packingItems.filter((item) => item.id !== id),
       }));
     },
-    [persist],
+    [dataSource, persist],
   );
 
   const createPhoto = useCallback(
-    (input: Omit<TravelPhoto, "id" | "createdAt" | "updatedAt">) => {
+    async (input: Omit<TravelPhoto, "id" | "createdAt" | "updatedAt">) => {
+      if (supabase && dataSource === "supabase") {
+        const user = await requireSupabaseUser();
+        const { data, error: requestError } = await supabase
+          .from("photos")
+          .insert(mapPhotoToRow({ ...input, userId: user.id }))
+          .select("*")
+          .single();
+
+        if (requestError) throw new Error(requestError.message);
+
+        const photo = mapPhotoFromRow(data);
+        persist((current) => ({ ...current, photos: [photo, ...current.photos] }));
+        return photo;
+      }
+
       const photo = withDates(input) as TravelPhoto;
       persist((current) => ({ ...current, photos: [photo, ...current.photos] }));
       return photo;
     },
-    [persist],
+    [dataSource, persist],
+  );
+
+  const createRoute = useCallback(
+    async (input: RouteFormInput) => {
+      if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
+        const { data, error: requestError } = await supabase
+          .from("routes")
+          .insert(mapRouteToRow(input))
+          .select("*")
+          .single();
+
+        if (requestError) throw new Error(requestError.message);
+
+        const route = mapRouteFromRow(data);
+        persist((current) => ({ ...current, routes: [route, ...current.routes] }));
+        return route;
+      }
+
+      const route = withDates({ ...input, userId: null }) as RoutePlan;
+      persist((current) => ({ ...current, routes: [route, ...current.routes] }));
+      return route;
+    },
+    [dataSource, persist],
   );
 
   const createAiGeneration = useCallback(
-    (input: Omit<AiGeneration, "id" | "createdAt">) => {
+    async (input: Omit<AiGeneration, "id" | "createdAt">) => {
+      if (supabase && dataSource === "supabase") {
+        const user = await requireSupabaseUser();
+        const { data, error: requestError } = await supabase
+          .from("ai_generations")
+          .insert(mapAiGenerationToRow({ ...input, userId: user.id }))
+          .select("*")
+          .single();
+
+        if (requestError) throw new Error(requestError.message);
+
+        const generation = mapAiGenerationFromRow(data);
+        persist((current) => ({
+          ...current,
+          aiGenerations: [generation, ...current.aiGenerations],
+        }));
+        return generation;
+      }
+
       const generation = {
         ...input,
         id: crypto.randomUUID(),
@@ -564,7 +941,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       }));
       return generation;
     },
-    [persist],
+    [dataSource, persist],
   );
 
   const value = useMemo(
@@ -594,6 +971,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       togglePackingItem,
       deletePackingItem,
       createPhoto,
+      createRoute,
       createAiGeneration,
       refreshCountries,
     }),
@@ -623,6 +1001,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       togglePackingItem,
       deletePackingItem,
       createPhoto,
+      createRoute,
       createAiGeneration,
       refreshCountries,
     ],

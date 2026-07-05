@@ -25,11 +25,20 @@ type RoutingResponse = {
   error?: string;
 };
 
-export function RoutingPanel({ places }: { places: Place[] }) {
-  const { capabilityStatus } = useTravel();
+export function RoutingPanel({
+  places,
+  tripId = null,
+}: {
+  places: Place[];
+  tripId?: string | null;
+}) {
+  const { capabilityStatus, createRoute } = useTravel();
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [profile, setProfile] = useState<"driving-car" | "foot-walking">(
+    "driving-car",
+  );
 
   const routeablePlaces = useMemo(() => getRouteablePlaces(places), [places]);
   const message = getRoutingSetupMessage(places, capabilityStatus.routing);
@@ -47,7 +56,7 @@ export function RoutingPanel({ places }: { places: Place[] }) {
     const response = await fetch("/api/routing/directions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ coordinates, profile: "driving-car" }),
+      body: JSON.stringify({ coordinates, profile }),
     });
     const data = (await response.json()) as RoutingResponse;
     setIsLoading(false);
@@ -66,6 +75,25 @@ export function RoutingPanel({ places }: { places: Place[] }) {
     const distanceKm = Math.round((summary.distance ?? 0) / 1000);
     const durationMinutes = Math.round((summary.duration ?? 0) / 60);
     setResult(`${distanceKm} km · ca. ${durationMinutes} Minuten`);
+
+    try {
+      await createRoute({
+        tripId,
+        name: `${routeablePlaces[0]?.name ?? "Start"} nach ${
+          routeablePlaces[routeablePlaces.length - 1]?.name ?? "Ziel"
+        }`,
+        routeGeojson: data.routeGeojson,
+        distanceKm,
+        durationMinutes,
+        provider: "openrouteservice",
+      });
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? `Route berechnet, aber nicht gespeichert: ${saveError.message}`
+          : "Route berechnet, aber nicht gespeichert.",
+      );
+    }
   }
 
   return (
@@ -85,16 +113,28 @@ export function RoutingPanel({ places }: { places: Place[] }) {
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">{message}</p>
 
-          <Button
-            className="mt-4 rounded-2xl"
-            disabled={!canGenerate || isLoading}
-            onClick={generateRoute}
-            type="button"
-            variant="secondary"
-          >
-            <Route size={16} />
-            {isLoading ? "Berechne..." : "Route testen"}
-          </Button>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <select
+              className="h-11 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none"
+              onChange={(event) =>
+                setProfile(event.target.value as "driving-car" | "foot-walking")
+              }
+              value={profile}
+            >
+              <option value="driving-car">Auto</option>
+              <option value="foot-walking">Zu Fuß</option>
+            </select>
+            <Button
+              className="rounded-2xl"
+              disabled={!canGenerate || isLoading}
+              onClick={generateRoute}
+              type="button"
+              variant="secondary"
+            >
+              <Route size={16} />
+              {isLoading ? "Berechne..." : "Route erstellen"}
+            </Button>
+          </div>
 
           {result ? (
             <p className="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">

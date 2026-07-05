@@ -1,41 +1,25 @@
 # JourneyOS
 
-JourneyOS ist ein persönliches Reise-Betriebssystem. Die App hilft dabei,
-besuchte Länder, Wunschziele, Orte, Fotos, Trips, Tagespläne, Links, Budgets,
-Packlisten, Wetterchecks und spätere AI-Reiseideen an einem Ort zu sammeln.
+JourneyOS ist ein persönliches Reise-Betriebssystem für Länder, Orte, Fotos,
+Trips, Tagespläne, Links, Budgets, Packlisten, Wetterchecks, Routing und
+AI-Reiseideen.
 
-Die UI ist Deutsch. Code, Dateinamen, Variablen und Datenbankfelder sind Englisch.
-
-## Features in V1
-
-- Helles, responsives JourneyOS Dashboard mit Desktop-Sidebar und Mobile Bottom Navigation
-- Statistik-Karten für besuchte, geplante, Wishlist- und gespeicherte Länder
-- Länder anlegen, bearbeiten, löschen, suchen, filtern und sortieren
-- Status: Besucht, Geplant, Will ich unbedingt hin, Vielleicht irgendwann, Kein Interesse
-- Sichtbarkeit: private, family, public als Datenmodell-Vorbereitung
-- Länder-Detailseiten mit Notizen, Bewertung, Reisezeit, Karte, Wetter, Orten, Fotos, Links und AI-Panel
-- Orte innerhalb von Ländern anlegen, bearbeiten und löschen
-- Trips anlegen, bearbeiten und löschen
-- Trip-Detailseiten mit Tagesplanung, Tagespunkten, Packliste, Links, Fotos, Wetter und Routing-Hinweis
-- Weltkarte und Detailkarten mit Leaflet-Markern
-- Open-Meteo Wettercheck ohne API-Key
-- Supabase Auth/Database/Storage vorbereitet
-- Lokaler Demo-Modus mit `localStorage`, falls Supabase noch nicht bereit ist
-- Gemini AI und OpenRouteService vorbereitet, ohne Pflicht für API-Keys
+Die UI ist Deutsch. Code, Dateien, Variablen und Datenbankfelder sind Englisch.
 
 ## Tech Stack
 
 - Next.js App Router
 - TypeScript
 - Tailwind CSS
-- Supabase für Auth, Postgres und Storage
-- Leaflet / React-Leaflet für Karten
-- Open-Meteo für Wetter
-- OpenRouteService vorbereitet für Routing
-- Gemini API vorbereitet für AI-Texte
+- Supabase Auth, Postgres und Storage
+- Leaflet / React-Leaflet
+- MapTiler mit OpenStreetMap-Fallback
+- OpenRouteService über serverseitige API-Route
+- Open-Meteo ohne API-Key
+- Gemini über serverseitige API-Route
 - Vercel-ready
 
-## Lokal starten
+## Lokal Starten
 
 ```bash
 npm install
@@ -44,7 +28,7 @@ npm run dev
 
 Dann `http://localhost:3000` öffnen.
 
-Für Checks:
+Checks:
 
 ```bash
 npm run lint
@@ -52,9 +36,9 @@ npx tsc --noEmit
 npm run build
 ```
 
-## Environment Variables
+## .env.local
 
-Kopiere `.env.example` nach `.env.local`:
+Kopiere `.env.example` nach `.env.local` und fülle lokal echte Werte ein:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
@@ -64,28 +48,24 @@ NEXT_PUBLIC_MAPTILER_KEY=
 GEMINI_API_KEY=
 ```
 
-Pflicht für Supabase:
+Sicherheit:
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
-Optional:
-
-- `OPENROUTESERVICE_API_KEY`: aktiviert Routing über die serverseitige API-Route
-- `NEXT_PUBLIC_MAPTILER_KEY`: nutzt MapTiler statt OpenStreetMap-Fallback
-- `GEMINI_API_KEY`: serverseitig, aktiviert AI-Generierung über `/api/ai/generate`
-
-Ohne optionale Keys läuft JourneyOS weiter und zeigt Setup-Hinweise.
+- `GEMINI_API_KEY` ist nur serverseitig.
+- `OPENROUTESERVICE_API_KEY` läuft über `/api/routing/directions`.
+- Supabase URL/Anon Key und MapTiler Key dürfen clientseitig genutzt werden.
+- `.env.local`, `.env`, `.vercel`, `.next` und `node_modules` werden nicht committed.
 
 ## Supabase Setup
 
 1. Supabase-Projekt öffnen.
 2. SQL Editor öffnen.
-3. `supabase/schema.sql` ausführen.
+3. Den kompletten Inhalt von `supabase/schema.sql` ausführen.
 4. Authentication -> Providers -> Email aktivieren.
-5. Site URL und Redirect URLs für lokal und Vercel setzen.
-6. `.env.local` mit Supabase URL und Anon Key füllen.
-7. App neu starten.
+5. Redirect URLs setzen:
+   - `http://localhost:3000`
+   - deine Vercel-Domain
+6. `.env.local` mit Supabase URL und Anon/Publishable Key füllen.
+7. App neu starten und unter Einstellungen anmelden.
 
 Das Schema erstellt:
 
@@ -101,72 +81,116 @@ Das Schema erstellt:
 - `packing_items`
 - `ai_generations`
 
-RLS ist aktiviert. Nutzer können eigene Daten verwalten. Öffentliche Zeilen sind
-für spätere Sharing-Features lesbar vorbereitet. `family` ist bewusst noch nicht
-freigeschaltet; dafür braucht V2 eine Membership-/Einladungs-Tabelle.
+RLS ist aktiv. Eigene Daten sind nur für den Besitzer verwaltbar. Öffentliche
+Einträge sind für spätere Sharing-Features lesbar vorbereitet. `family` ist als
+Feld vorbereitet, aber ohne Membership-Tabelle noch nicht fremdlesbar.
 
-## Storage Bucket
+## Supabase Storage
 
-`supabase/schema.sql` erstellt den privaten Bucket `travel-photos` mit:
+`supabase/schema.sql` erstellt den privaten Bucket `travel-photos` und Policies:
 
-- maximal 6 MB
-- erlaubten MIME Types: JPEG, PNG, WEBP, GIF
-- Storage Policies pro User-Ordner
+- 6 MB Limit
+- JPEG, PNG, WEBP, GIF
+- Upload/Read/Update/Delete nur im eigenen User-Ordner
+- Upload-Pfade: `userId/entityId/file`
 
-Uploads werden unter `userId/...` gespeichert. Die App nutzt Signed URLs für die
-Anzeige, damit private Fotos nicht als öffentlicher Bucket behandelt werden.
+Wenn Uploads fehlschlagen:
 
-## Seed Data
+1. Prüfe, ob `supabase/schema.sql` vollständig ausgeführt wurde.
+2. Prüfe, ob du angemeldet bist.
+3. Prüfe in Supabase Storage, ob `travel-photos` existiert.
+4. Prüfe die Policies auf `storage.objects`.
 
-`supabase/seed.sql` enthält Beispiel-Länder. Nur in einer Entwicklungsumgebung
-ausführen, während ein User angemeldet ist, weil RLS `auth.uid()` verwendet.
+## API Integrationen Testen
 
-## Vercel Deployment
+Supabase:
 
-1. GitHub-Repository mit Vercel verbinden.
-2. Environment Variables in Vercel setzen:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - optional `OPENROUTESERVICE_API_KEY`
-   - optional `NEXT_PUBLIC_MAPTILER_KEY`
-   - optional `GEMINI_API_KEY`
-3. Deploy auslösen.
-4. In Supabase die Vercel-Domain als Redirect URL eintragen.
-5. `supabase/schema.sql` im Supabase SQL Editor ausführen.
+- Einstellungen öffnen
+- Magic Link Login ausführen
+- Land/Ort/Trip anlegen
+- Seite neu laden und prüfen, ob Daten bleiben
 
-## GitHub
+Storage:
 
-Das Projekt ist für das Repository `Felijello/JourneyOS` vorbereitet. `.env.local`,
-`.vercel`, `.next`, `node_modules` und Build-Artefakte werden nicht committed.
+- Angemeldet sein
+- Country oder Trip Detail öffnen
+- Foto unter 6 MB hochladen
+- Sichtbarkeit wählen
+
+MapTiler:
+
+- `/map` öffnen
+- Wenn `NEXT_PUBLIC_MAPTILER_KEY` fehlt, nutzt JourneyOS OpenStreetMap.
+- Domain-Beschränkung im MapTiler Dashboard setzen.
+
+OpenRouteService:
+
+- In einem Trip mindestens zwei Orte mit Koordinaten speichern
+- Trip Detail öffnen
+- Routing-Modus Auto oder Zu Fuß wählen
+- Route erstellen
+- Distanz/Dauer und Kartenlinie prüfen
+
+Open-Meteo:
+
+- Land/Trip mit Koordinaten öffnen
+- Reisezeit-Check ansehen
+- Nahe Reisedaten zeigen Forecast, ferne Daten zeigen einen vorsichtigen Hinweis.
+
+Gemini:
+
+- Country oder Trip Detail öffnen
+- AI Travel Buddy Button nutzen
+- Ausgabe sollte locker und hilfreich auf Deutsch sein
+- Generierungen werden bei Supabase-Login in `ai_generations` gespeichert.
+
+## Vercel Setup
+
+In Vercel Project Settings -> Environment Variables setzen:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `OPENROUTESERVICE_API_KEY`
+- `NEXT_PUBLIC_MAPTILER_KEY`
+- `GEMINI_API_KEY`
+
+Danach Production neu deployen.
+
+## Troubleshooting
+
+- `relation "countries" does not exist`: `supabase/schema.sql` im SQL Editor ausführen.
+- Supabase REST/API gibt `401`: Supabase URL und Anon/Publishable Key im Project Settings -> API erneut prüfen und App neu starten/deployen.
+- Upload sagt Bucket fehlt: Storage-Teil im Schema ausführen und angemeldet sein.
+- Supabase bleibt Demo-Modus: Env Vars, Login und RLS/Schema prüfen.
+- AI fehlt: `GEMINI_API_KEY` in Vercel/local setzen und neu deployen.
+- AI gibt `502`: Gemini-Key ist vorhanden, aber Google lehnt die Anfrage ab. Prüfe, ob der Key ein gültiger Google AI Studio/Gemini API Key ist und die API im Projekt aktiv ist.
+- Routing fehlt: `OPENROUTESERVICE_API_KEY` serverseitig setzen und neu deployen.
+- Karte lädt ohne MapTiler: `NEXT_PUBLIC_MAPTILER_KEY` setzen oder OSM-Fallback nutzen.
+- Auth Redirect klappt nicht: Supabase Redirect URL auf lokale und Vercel-Domain setzen.
 
 ## Manual Test Checklist
 
-- Dashboard auf Desktop und iPhone-Breite öffnen
-- Bottom Navigation auf Mobile testen
-- Land anlegen, bearbeiten und löschen
-- Länder suchen, nach Status/Kontinent filtern und sortieren
-- Country Detail öffnen, Ort hinzufügen, Ort löschen
-- Foto-Upload mit Supabase-Login und Bucket testen
-- Trip anlegen, bearbeiten und löschen
-- Trip-Tag hinzufügen, Tagespunkt hinzufügen und löschen
-- Packlistenpunkt hinzufügen, abhaken und löschen
-- Saved Link mit Booking/GetYourGuide URL speichern
-- Karte mit und ohne MapTiler-Key prüfen
-- Wetterpanel bei Ländern mit Koordinaten prüfen
-- AI-Buttons ohne Gemini-Key und mit Gemini-Key testen
-- Vercel Deployment öffnen und Supabase Redirect URL prüfen
+- Dashboard Desktop und Mobile prüfen
+- Bottom Navigation auf iPhone-Breite testen
+- Land anlegen, bearbeiten, löschen
+- Land suchen, Status/Kontinent filtern, sortieren
+- Ort mit Koordinaten hinzufügen
+- Trip anlegen, bearbeiten, löschen
+- Trip-Tag und Tagespunkt hinzufügen
+- Packlistenpunkt hinzufügen, abhaken, löschen
+- Saved Link speichern und öffnen
+- Foto hochladen und Galerie prüfen
+- Wetterpanel prüfen
+- Route zwischen zwei Orten erstellen
+- AI-Buttons testen
+- `/settings` Integrationsstatus prüfen
 
 ## Roadmap
 
-- Öffentliche/private Profile und Familienfreigaben
-- Länder-Polygone statt nur Marker
-- Place Detail Pages mit Galerien und Bewertungen
-- Routenberechnung mit OpenRouteService und GeoJSON-Anzeige
+- Echte Familienfreigaben über Memberships
+- Länder-Polygone und farbige Flächen
+- Place Detail Pages
+- Bessere Routenplanung pro Trip-Day
 - Historische Klima-/Beste-Reisezeit-Auswertung
-- Budgetauswertung und Hotelverwaltung
 - EXIF/GPS-Auswertung für Fotos
-- AI-Länderbeschreibungen, Place-Texte, Trip-Pläne, Zielvergleiche,
-  Reisezeit-Checks, Routenoptimierung und Zielvorschläge
-
-Die spätere AI soll locker, persönlich und hilfreich auf Deutsch schreiben, wie
-ein Travel Buddy statt ein Reisebüro.
+- AI-Routenoptimierung und Zielvorschläge

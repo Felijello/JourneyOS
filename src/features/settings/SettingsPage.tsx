@@ -5,6 +5,7 @@ import {
   Bot,
   CloudSun,
   Database,
+  HardDrive,
   Lock,
   Map,
   Route,
@@ -22,15 +23,20 @@ const roadmap = [
   "Budgetauswertung, Hotelverwaltung und bessere Packlisten",
 ];
 
+type HealthStatus = {
+  ai?: boolean;
+  routing?: boolean;
+};
+
 export function SettingsPage() {
   const { dataSource, capabilityStatus } = useTravel();
-  const [aiAvailable, setAiAvailable] = useState(false);
+  const [health, setHealth] = useState<HealthStatus>({});
 
   useEffect(() => {
     fetch("/api/health")
       .then((response) => response.json())
-      .then((data: { ai?: boolean }) => setAiAvailable(Boolean(data.ai)))
-      .catch(() => setAiAvailable(false));
+      .then((data: HealthStatus) => setHealth(data))
+      .catch(() => setHealth({}));
   }, []);
 
   return (
@@ -44,8 +50,8 @@ export function SettingsPage() {
           Einstellungen & Info
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Hier siehst du, welche Integrationen aktiv sind. Alles Optionale ist
-          so gebaut, dass JourneyOS auch ohne API-Keys stabil im Demo-Modus läuft.
+          Hier siehst du, welche Integrationen aktiv sind. Demo-Modus bleibt nur
+          Fallback, wenn Supabase fehlt oder das Schema noch nicht ausgeführt ist.
         </p>
       </div>
 
@@ -54,33 +60,39 @@ export function SettingsPage() {
           active={dataSource === "supabase"}
           description={
             dataSource === "supabase"
-              ? "Supabase ist verbunden. Länder werden in der Datenbank gespeichert."
-              : "Lokaler Demo-Modus aktiv. Daten liegen im Browser-Storage."
+              ? "Supabase verbunden: Länder, Orte, Trips, Fotos, Links und Packlisten nutzen die Datenbank."
+              : "Demo-Modus aktiv. Prüfe Supabase Env Vars, Login und ob supabase/schema.sql ausgeführt wurde."
           }
           icon={<Database size={22} />}
           title="Supabase"
         />
         <StatusCard
+          active={dataSource === "supabase"}
+          description="Bucket travel-photos wird in supabase/schema.sql vorbereitet. Uploads brauchen Login und passende Storage Policies."
+          icon={<HardDrive size={22} />}
+          title="Storage"
+        />
+        <StatusCard
           active
-          description="Open-Meteo braucht keinen API-Key und liefert Wetterdaten für Koordinaten."
+          description="Open-Meteo braucht keinen API-Key und liefert Forecasts für Koordinaten."
           icon={<CloudSun size={22} />}
           title="Wetter"
         />
         <StatusCard
-          active={capabilityStatus.routing}
+          active={Boolean(health.routing ?? capabilityStatus.routing)}
           description={
-            capabilityStatus.routing
-              ? "OpenRouteService-Key ist vorhanden."
+            health.routing ?? capabilityStatus.routing
+              ? "OpenRouteService ist serverseitig verbunden. Der Key wird nicht im Browser gebraucht."
               : "OPENROUTESERVICE_API_KEY fehlt serverseitig. Routing bleibt vorbereitet."
           }
           icon={<Route size={22} />}
           title="Routing"
         />
         <StatusCard
-          active={aiAvailable}
+          active={Boolean(health.ai ?? capabilityStatus.ai)}
           description={
-            aiAvailable
-              ? "Gemini-Key ist serverseitig gesetzt. AI-Buttons können Antworten erzeugen."
+            health.ai ?? capabilityStatus.ai
+              ? "Gemini ist serverseitig verbunden. AI-Buttons können Antworten erzeugen."
               : "GEMINI_API_KEY fehlt. AI-Module zeigen vorbereitete Zustände."
           }
           icon={<Bot size={22} />}
@@ -90,17 +102,11 @@ export function SettingsPage() {
           active={capabilityStatus.maptiler}
           description={
             capabilityStatus.maptiler
-              ? "MapTiler-Key ist vorhanden."
+              ? "MapTiler-Key ist vorhanden. Karten nutzen den modernen MapTiler-Stil."
               : "NEXT_PUBLIC_MAPTILER_KEY fehlt. OpenStreetMap wird als Fallback genutzt."
           }
           icon={<Map size={22} />}
           title="Map Provider"
-        />
-        <StatusCard
-          active
-          description="Sichtbarkeit private/family/public ist im Datenmodell vorbereitet."
-          icon={<Lock size={22} />}
-          title="Privatsphäre"
         />
       </section>
 
@@ -111,8 +117,8 @@ export function SettingsPage() {
             <div>
               <h2 className="text-xl font-semibold text-slate-950">Roadmap</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                V1 legt den Kern. Die nächsten Versionen können ohne Umbau auf
-                Orte, Fotos, Routen, AI und Sharing aufbauen.
+                V1 legt den Kern. Die nächsten Versionen können ohne großen
+                Umbau auf Sharing, Polygone, bessere AI-Flows und EXIF-Fotos aufbauen.
               </p>
             </div>
           </div>
@@ -127,17 +133,21 @@ export function SettingsPage() {
         </article>
 
         <article className="journey-card p-5">
-          <h2 className="text-xl font-semibold text-slate-950">Privacy-Konzept</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            Private Daten bleiben standardmäßig privat. Länder, Orte, Trips,
-            Fotos und Links tragen bereits Sichtbarkeit. In Supabase schützen
-            Row-Level-Security-Policies die eigenen Daten; öffentliches Teilen
-            kann später gezielt auf `public` erweitert werden.
-          </p>
+          <div className="flex items-start gap-3">
+            <Lock className="mt-1 text-blue-600" size={22} />
+            <div>
+              <h2 className="text-xl font-semibold text-slate-950">Privacy-Konzept</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                Private Daten bleiben standardmäßig privat. Länder, Orte,
+                Trips, Fotos und Links tragen bereits Sichtbarkeit. Supabase RLS
+                erlaubt volle Verwaltung nur für eigene Daten; öffentliches Lesen
+                ist nur für `public` vorbereitet.
+              </p>
+            </div>
+          </div>
           <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-            Familienfreigaben sind als Feld vorbereitet. Für eine echte
-            Familiengruppe braucht V2 eine zusätzliche Tabelle für Beziehungen
-            oder Einladungen.
+            Familienfreigaben sind als Feld vorbereitet. Für echte Familiengruppen
+            braucht V2 eine Membership- oder Einladungs-Tabelle.
           </div>
         </article>
       </section>

@@ -1,11 +1,12 @@
 ﻿"use client";
 
 import "leaflet/dist/leaflet.css";
+import type { GeoJsonObject } from "geojson";
 import L from "leaflet";
-import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import { GeoJSON, MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import { StatusBadge } from "@/components/ui/Badge";
 import { placeTypeLabels, statusMapColors } from "@/lib/country-options";
-import type { Country, Place } from "@/types/country";
+import type { Country, Place, RoutePlan } from "@/types/country";
 
 function createMarkerIcon(country: Country) {
   const color = statusMapColors[country.status];
@@ -20,9 +21,11 @@ function createMarkerIcon(country: Country) {
 export default function WorldMapClient({
   countries,
   places = [],
+  routes = [],
 }: {
   countries: Country[];
   places?: Place[];
+  routes?: RoutePlan[];
 }) {
   const markerCountries = countries.filter(
     (country) =>
@@ -33,6 +36,7 @@ export default function WorldMapClient({
     (place) =>
       typeof place.latitude === "number" && typeof place.longitude === "number",
   );
+  const drawableRoutes = routes.filter((route) => route.routeGeojson);
 
   return (
     <div className="h-[420px] overflow-hidden rounded-3xl border border-slate-200 bg-blue-50 shadow-sm">
@@ -100,6 +104,17 @@ export default function WorldMapClient({
               </div>
             </Popup>
           </Marker>
+        ))}
+        {drawableRoutes.map((route) => (
+          <GeoJSON
+            data={route.routeGeojson as GeoJsonObject}
+            key={route.id}
+            style={{
+              color: "#2563eb",
+              opacity: 0.85,
+              weight: 4,
+            }}
+          />
         ))}
       </MapContainer>
     </div>

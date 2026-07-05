@@ -2,10 +2,39 @@
 
 import { Sparkles } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/Button";
 import { useTravel } from "@/components/providers/CountryProvider";
+import { Button } from "@/components/ui/Button";
 import { getMissingAiKeyMessage } from "@/lib/services/ai";
 import type { EntityType } from "@/types/country";
+
+const aiActions = [
+  {
+    label: "Beschreibung",
+    prompt: "Schreibe eine entspannte, persönliche Beschreibung.",
+  },
+  {
+    label: "Place-Text",
+    prompt: "Schreibe eine lockere Place-Beschreibung mit konkreten Tipps.",
+  },
+  {
+    label: "Plan-Idee",
+    prompt: "Mach einen groben, realistischen Reiseplan-Vorschlag.",
+  },
+  {
+    label: "Ziele vergleichen",
+    prompt: "Vergleiche dieses Ziel mit zwei passenden Alternativen.",
+  },
+  {
+    label: "Datum checken",
+    prompt:
+      "Prüfe, ob die Reisezeit sinnvoll wirkt. Sei ehrlich, aber nicht dramatisch.",
+  },
+  {
+    label: "Route optimieren",
+    prompt:
+      "Optimiere eine grobe Route oder Tagesplanung aus dem Kontext. Achte auf realistische Wege.",
+  },
+];
 
 export function AiPanel({
   entityType,
@@ -16,33 +45,51 @@ export function AiPanel({
   entityId?: string;
   context: string;
 }) {
-  const { createAiGeneration } = useTravel();
+  const { capabilityStatus, createAiGeneration } = useTravel();
   const [result, setResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function generate(prompt: string) {
-    setIsLoading(true);
-    setError(null);
-    const response = await fetch("/api/ai/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, context }),
-    });
-    const data = (await response.json()) as { result?: string; error?: string };
-    setIsLoading(false);
-    if (!response.ok || data.error) {
-      setError(data.error ?? getMissingAiKeyMessage());
+    if (!capabilityStatus.ai) {
+      setError(getMissingAiKeyMessage());
       return;
     }
-    setResult(data.result ?? "");
-    createAiGeneration({
-      entityType,
-      entityId,
-      prompt,
-      result: data.result ?? "",
-      provider: "gemini",
-    });
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/ai/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, context }),
+      });
+      const data = (await response.json()) as { result?: string; error?: string };
+
+      if (!response.ok || data.error) {
+        setError(data.error ?? getMissingAiKeyMessage());
+        return;
+      }
+
+      const generatedResult = data.result ?? "";
+      setResult(generatedResult);
+      await createAiGeneration({
+        entityType,
+        entityId,
+        prompt,
+        result: generatedResult,
+        provider: "gemini",
+      });
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "AI konnte gerade keine Antwort liefern.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -52,34 +99,22 @@ export function AiPanel({
         <h2 className="text-lg font-semibold text-slate-950">AI Travel Buddy</h2>
       </div>
       <p className="mt-2 text-sm leading-6 text-slate-600">
-        Lockerer deutscher Ton ist vorbereitet. Ohne Gemini-Key bleiben die Buttons
-        als Setup-Hinweis nutzbar.
+        {capabilityStatus.ai
+          ? "Gemini ist serverseitig verbunden. JourneyOS sendet nur den relevanten Kontext dieser Ansicht."
+          : "AI vorbereitet - API-Key fehlt oder ist serverseitig nicht verfügbar."}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button
-          className="rounded-2xl"
-          disabled={isLoading}
-          onClick={() => generate("Schreibe eine entspannte Beschreibung.")}
-          variant="secondary"
-        >
-          Beschreibung
-        </Button>
-        <Button
-          className="rounded-2xl"
-          disabled={isLoading}
-          onClick={() => generate("Mach einen groben Reiseplan-Vorschlag.")}
-          variant="secondary"
-        >
-          Plan-Idee
-        </Button>
-        <Button
-          className="rounded-2xl"
-          disabled={isLoading}
-          onClick={() => generate("Prüfe, ob die Reisezeit sinnvoll wirkt.")}
-          variant="secondary"
-        >
-          Datum checken
-        </Button>
+        {aiActions.map((action) => (
+          <Button
+            className="rounded-2xl"
+            disabled={!capabilityStatus.ai || isLoading}
+            key={action.label}
+            onClick={() => generate(action.prompt)}
+            variant="secondary"
+          >
+            {action.label}
+          </Button>
+        ))}
       </div>
       {error ? <p className="mt-3 text-sm font-medium text-blue-700">{error}</p> : null}
       {result ? (

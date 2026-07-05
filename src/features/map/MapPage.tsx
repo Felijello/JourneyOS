@@ -8,7 +8,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { countryStatuses, statusMapColors } from "@/lib/country-options";
 
 export function MapPage() {
-  const { countries, places, capabilityStatus } = useTravel();
+  const { countries, places, routes, capabilityStatus } = useTravel();
   const mappedCountries = countries.filter(
     (country) => country.latitude != null && country.longitude != null,
   );
@@ -35,7 +35,7 @@ export function MapPage() {
         </LinkButton>
       </section>
 
-      <WorldMap countries={countries} places={places} />
+      <WorldMap countries={countries} places={places} routes={routes} />
 
       <section className="grid gap-4 lg:grid-cols-[0.7fr_1.3fr]">
         <article className="journey-card p-5">

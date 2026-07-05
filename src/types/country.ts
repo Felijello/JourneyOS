@@ -215,3 +215,8 @@ export type TravelState = {
   packingItems: PackingItem[];
   aiGenerations: AiGeneration[];
 };
+
+export type RouteFormInput = Omit<
+  RoutePlan,
+  "id" | "userId" | "createdAt" | "updatedAt"
+>;

@@ -11,9 +11,34 @@ const allowedProfiles = new Set([
   "foot-walking",
   "cycling-regular",
 ]);
+const rateLimitWindowMs = 60_000;
+const maxRequestsPerWindow = 12;
+const requestCounts = new Map<string, { count: number; resetAt: number }>();
+
+function isRateLimited(request: Request) {
+  const forwardedFor = request.headers.get("x-forwarded-for") ?? "local";
+  const key = forwardedFor.split(",")[0]?.trim() || "local";
+  const now = Date.now();
+  const current = requestCounts.get(key);
+
+  if (!current || current.resetAt < now) {
+    requestCounts.set(key, { count: 1, resetAt: now + rateLimitWindowMs });
+    return false;
+  }
+
+  current.count += 1;
+  return current.count > maxRequestsPerWindow;
+}
 
 export async function POST(request: Request) {
   const apiKey = process.env.OPENROUTESERVICE_API_KEY;
+
+  if (isRateLimited(request)) {
+    return NextResponse.json(
+      { error: "Zu viele Routing-Anfragen. Versuch es gleich nochmal." },
+      { status: 429 },
+    );
+  }
 
   if (!apiKey) {
     return NextResponse.json(
@@ -49,26 +74,39 @@ export async function POST(request: Request) {
     );
   }
 
-  const response = await fetch(
-    `https://api.openrouteservice.org/v2/directions/${profile}/geojson`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: apiKey,
-        "Content-Type": "application/json",
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+
+  try {
+    const response = await fetch(
+      `https://api.openrouteservice.org/v2/directions/${profile}/geojson`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ coordinates }),
+        signal: controller.signal,
       },
-      body: JSON.stringify({ coordinates }),
-    },
-  );
-
-  const data = (await response.json()) as unknown;
-
-  if (!response.ok) {
-    return NextResponse.json(
-      { error: "OpenRouteService konnte keine Route berechnen.", details: data },
-      { status: response.status },
     );
-  }
 
-  return NextResponse.json({ routeGeojson: data, provider: "openrouteservice" });
+    const data = (await response.json()) as unknown;
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: "OpenRouteService konnte keine Route berechnen.", details: data },
+        { status: response.status },
+      );
+    }
+
+    return NextResponse.json({ routeGeojson: data, provider: "openrouteservice" });
+  } catch {
+    return NextResponse.json(
+      { error: "Routing dauert gerade zu lange oder ist nicht erreichbar." },
+      { status: 504 },
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
 }

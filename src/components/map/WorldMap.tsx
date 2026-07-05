@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import dynamic from "next/dynamic";
-import type { Country, Place } from "@/types/country";
+import type { Country, Place, RoutePlan } from "@/types/country";
 
 const LeafletWorldMap = dynamic(() => import("./WorldMapClient"), {
   ssr: false,
@@ -15,9 +15,11 @@ const LeafletWorldMap = dynamic(() => import("./WorldMapClient"), {
 export function WorldMap({
   countries,
   places = [],
+  routes = [],
 }: {
   countries: Country[];
   places?: Place[];
+  routes?: RoutePlan[];
 }) {
-  return <LeafletWorldMap countries={countries} places={places} />;
+  return <LeafletWorldMap countries={countries} places={places} routes={routes} />;
 }

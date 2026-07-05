@@ -11,17 +11,20 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "AI vorbereitet – GEMINI_API_KEY fehlt. Lege den Key in Vercel oder .env.local an.",
+          "AI vorbereitet - GEMINI_API_KEY fehlt. Lege den Key in Vercel oder .env.local an.",
       },
       { status: 400 },
     );
   }
 
+  const safeContext = body?.context?.slice(0, 2_500);
+  const safeTask = body?.prompt?.slice(0, 700);
   const prompt = [
     "Schreibe locker, persönlich und auf Deutsch wie ein guter Travel Buddy.",
     "Kling nicht wie ein Reisebüro. Sei hilfreich, ehrlich und konkret.",
-    body?.context ? `Kontext: ${body.context}` : "",
-    body?.prompt ? `Aufgabe: ${body.prompt}` : "Erstelle eine kurze Reiseidee.",
+    "Nutze nur den gegebenen Kontext. Erfinde keine privaten Details.",
+    safeContext ? `Kontext: ${safeContext}` : "",
+    safeTask ? `Aufgabe: ${safeTask}` : "Erstelle eine kurze Reiseidee.",
   ]
     .filter(Boolean)
     .join("\n\n");

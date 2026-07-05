@@ -32,6 +32,7 @@ export function TripDetailPage({ id }: { id: string }) {
     trips,
     countries,
     places,
+    routes,
     deleteTrip,
     updateTrip,
   } = useTravel();
@@ -39,6 +40,7 @@ export function TripDetailPage({ id }: { id: string }) {
   const trip = trips.find((item) => item.id === id);
   const country = countries.find((item) => item.id === trip?.countryId);
   const tripPlaces = places.filter((place) => place.countryId === trip?.countryId);
+  const tripRoutes = routes.filter((route) => route.tripId === id);
 
   if (!trip) {
     return (
@@ -150,9 +152,17 @@ export function TripDetailPage({ id }: { id: string }) {
           </div>
         </div>
         <div className="space-y-4">
-          <WorldMap countries={country ? [country] : []} places={tripPlaces} />
-          <WeatherPanel latitude={country?.latitude} longitude={country?.longitude} />
-          <RoutingPanel places={tripPlaces} />
+          <WorldMap
+            countries={country ? [country] : []}
+            places={tripPlaces}
+            routes={tripRoutes}
+          />
+          <WeatherPanel
+            latitude={country?.latitude}
+            longitude={country?.longitude}
+            startDate={trip.startDate}
+          />
+          <RoutingPanel places={tripPlaces} tripId={tripId} />
           <PackingListPanel tripId={tripId} />
           <PhotoGallery countryId={country?.id} tripId={tripId} />
           <SavedLinksPanel countryId={country?.id} tripId={tripId} />
