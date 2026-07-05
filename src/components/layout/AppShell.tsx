@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -10,7 +11,6 @@ import {
   Home,
   Map,
   Plus,
-  Search,
   Settings,
   Sparkles,
 } from "lucide-react";
@@ -18,9 +18,9 @@ import {
   CountryProvider,
   useTravel,
 } from "@/components/providers/CountryProvider";
+import { TravelSearch } from "@/components/travel/TravelSearch";
 import { LinkButton } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
-import type { ReactNode } from "react";
 
 const navigation = [
   { href: "/", label: "Dashboard", icon: Home },
@@ -99,8 +99,8 @@ function Sidebar() {
             AI vorbereitet
           </div>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Sobald Gemini verbunden ist, schreibt JourneyOS entspannte
-            Reisebeschreibungen und Plan-Ideen auf Deutsch.
+            Die Suche kombiniert Gemini, Open-Meteo und Geocoding für schnelle
+            Reisezeit-Checks.
           </p>
         </div>
         <div className="flex items-center gap-3 border-t border-slate-200 pt-4">
@@ -164,23 +164,14 @@ function TopBar() {
           </span>
         </Link>
 
-        <label className="hidden h-12 min-w-0 flex-1 max-w-xl items-center gap-3 rounded-2xl border border-slate-200 bg-white/86 px-4 shadow-sm lg:flex">
-          <Search aria-hidden="true" className="text-slate-400" size={18} />
-          <input
-            className="h-full min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
-            placeholder="Länder, Städte oder Notizen suchen..."
-          />
-          <kbd className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500">
-            ⌘ K
-          </kbd>
-        </label>
+        <TravelSearch className="hidden max-w-xl lg:block" />
 
         <div className="flex items-center gap-2">
           <DataSourcePill />
           <button
             className="hidden size-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:text-slate-950 sm:flex"
-            type="button"
             title="Benachrichtigungen"
+            type="button"
           >
             <Bell aria-hidden="true" size={18} />
           </button>
@@ -189,6 +180,9 @@ function TopBar() {
             Land
           </LinkButton>
         </div>
+      </div>
+      <div className="mx-auto mt-3 max-w-7xl lg:hidden">
+        <TravelSearch />
       </div>
     </header>
   );

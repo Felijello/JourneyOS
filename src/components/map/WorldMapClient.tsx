@@ -3,7 +3,8 @@
 import "leaflet/dist/leaflet.css";
 import type { GeoJsonObject } from "geojson";
 import L from "leaflet";
-import { GeoJSON, MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import { useEffect, useState } from "react";
+import { GeoJSON, MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import { StatusBadge } from "@/components/ui/Badge";
 import { placeTypeLabels, statusMapColors } from "@/lib/country-options";
 import type { Country, Place, RoutePlan } from "@/types/country";
@@ -16,6 +17,51 @@ function createMarkerIcon(country: Country) {
     iconSize: [16, 16],
     iconAnchor: [8, 8],
   });
+}
+
+function MapZoomControls() {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+
+  useEffect(() => {
+    map.scrollWheelZoom.enable();
+    map.touchZoom.enable();
+
+    const syncZoom = () => setZoom(map.getZoom());
+    map.on("zoomend", syncZoom);
+    syncZoom();
+
+    return () => {
+      map.off("zoomend", syncZoom);
+    };
+  }, [map]);
+
+  const minZoom = map.getMinZoom();
+  const maxZoom = map.getMaxZoom();
+
+  return (
+    <div className="absolute left-4 top-4 z-[1000] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-lg backdrop-blur">
+      <button
+        aria-label="In die Karte hineinzoomen"
+        className="grid size-10 place-items-center text-lg font-semibold text-graphite-900 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-300"
+        disabled={zoom >= maxZoom}
+        onClick={() => map.setZoom(Math.min(map.getZoom() + 1, maxZoom))}
+        type="button"
+      >
+        +
+      </button>
+      <div className="h-px bg-slate-200" />
+      <button
+        aria-label="Aus der Karte herauszoomen"
+        className="grid size-10 place-items-center text-lg font-semibold text-graphite-900 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-300"
+        disabled={zoom <= minZoom}
+        onClick={() => map.setZoom(Math.max(map.getZoom() - 1, minZoom))}
+        type="button"
+      >
+        -
+      </button>
+    </div>
+  );
 }
 
 export default function WorldMapClient({
@@ -47,11 +93,14 @@ export default function WorldMapClient({
           [-85, -180],
           [85, 180],
         ]}
-        minZoom={2}
-        scrollWheelZoom={false}
+        maxZoom={12}
+        minZoom={1}
+        scrollWheelZoom
+        touchZoom
         zoom={2}
         zoomControl={false}
       >
+        <MapZoomControls />
         {process.env.NEXT_PUBLIC_MAPTILER_KEY ? (
           <TileLayer
             attribution='&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

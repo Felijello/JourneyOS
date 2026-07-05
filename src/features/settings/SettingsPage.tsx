@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { AuthPanel } from "@/components/auth/AuthPanel";
 import { useTravel } from "@/components/providers/CountryProvider";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 const roadmap = [
   "Öffentliche Reiseprofile für Familie und Freunde",
@@ -31,6 +32,7 @@ type HealthStatus = {
 export function SettingsPage() {
   const { dataSource, capabilityStatus } = useTravel();
   const [health, setHealth] = useState<HealthStatus>({});
+  const supabaseConnected = dataSource === "supabase";
 
   useEffect(() => {
     fetch("/api/health")
@@ -50,33 +52,42 @@ export function SettingsPage() {
           Einstellungen & Info
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Hier siehst du, welche Integrationen aktiv sind. Demo-Modus bleibt nur
-          Fallback, wenn Supabase fehlt oder das Schema noch nicht ausgeführt ist.
+          Hier siehst du, welche Integrationen aktiv sind. Wenn Supabase
+          konfiguriert ist, aber noch Demo-Modus erscheint, liegt es meistens an
+          Login, API-Key oder einem noch nicht ausgeführten SQL-Schema.
         </p>
       </div>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <StatusCard
-          active={dataSource === "supabase"}
+          active={supabaseConnected}
           description={
-            dataSource === "supabase"
+            supabaseConnected
               ? "Supabase verbunden: Länder, Orte, Trips, Fotos, Links und Packlisten nutzen die Datenbank."
-              : "Demo-Modus aktiv. Prüfe Supabase Env Vars, Login und ob supabase/schema.sql ausgeführt wurde."
+              : isSupabaseConfigured
+                ? "Supabase Env Vars sind gesetzt, aber JourneyOS ist noch im Demo-Modus. Prüfe Login, API-Key und ob supabase/schema.sql ausgeführt wurde."
+                : "Supabase Env Vars fehlen. JourneyOS läuft deshalb im Demo-Modus."
           }
           icon={<Database size={22} />}
-          title="Supabase"
+          title={supabaseConnected ? "Supabase verbunden" : "Supabase nicht verbunden"}
         />
         <StatusCard
-          active={dataSource === "supabase"}
-          description="Bucket travel-photos wird in supabase/schema.sql vorbereitet. Uploads brauchen Login und passende Storage Policies."
+          active={supabaseConnected}
+          description={
+            supabaseConnected
+              ? "Storage ist bereit, sofern der Bucket travel-photos und die Policies aus schema.sql existieren."
+              : isSupabaseConfigured
+                ? "Storage wartet auf eine aktive Supabase-Verbindung. Danach funktionieren Uploads mit Login."
+                : "Storage braucht Supabase Env Vars und den Bucket travel-photos."
+          }
           icon={<HardDrive size={22} />}
-          title="Storage"
+          title={supabaseConnected ? "Storage vorbereitet" : "Storage wartet"}
         />
         <StatusCard
           active
-          description="Open-Meteo braucht keinen API-Key und liefert Forecasts für Koordinaten."
+          description="Open-Meteo braucht keinen API-Key. Die Suche und Reisezeit-Checks nutzen Forecasts über Koordinaten."
           icon={<CloudSun size={22} />}
-          title="Wetter"
+          title="Open-Meteo"
         />
         <StatusCard
           active={Boolean(health.routing ?? capabilityStatus.routing)}
@@ -92,8 +103,8 @@ export function SettingsPage() {
           active={Boolean(health.ai ?? capabilityStatus.ai)}
           description={
             health.ai ?? capabilityStatus.ai
-              ? "Gemini ist serverseitig verbunden. AI-Buttons können Antworten erzeugen."
-              : "GEMINI_API_KEY fehlt. AI-Module zeigen vorbereitete Zustände."
+              ? "Gemini ist serverseitig verbunden. Suche und AI-Buttons können Antworten erzeugen."
+              : "GEMINI_API_KEY fehlt oder wird von Gemini abgelehnt. AI zeigt dann Fallbacks."
           }
           icon={<Bot size={22} />}
           title="Gemini AI"
@@ -179,7 +190,7 @@ function StatusCard({
               : "bg-amber-50 text-amber-700 ring-amber-100"
           }`}
         >
-          {active ? "Aktiv" : "Fehlt"}
+          {active ? "Aktiv" : "Prüfen"}
         </span>
       </div>
       <h2 className="mt-4 text-lg font-semibold text-slate-950">{title}</h2>
