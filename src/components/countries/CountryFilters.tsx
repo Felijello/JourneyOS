@@ -1,26 +1,30 @@
 ﻿"use client";
 
 import { Search } from "lucide-react";
-import { countryStatuses } from "@/lib/country-options";
-import type { CountrySort, CountryStatus } from "@/types/country";
+import { continentLabels, continents, countryStatuses } from "@/lib/country-options";
+import type { Continent, CountrySort, CountryStatus } from "@/types/country";
 
 export function CountryFilters({
   query,
   status,
   sort,
+  continent,
   onQueryChange,
   onStatusChange,
   onSortChange,
+  onContinentChange,
 }: {
   query: string;
   status: CountryStatus | "all";
   sort: CountrySort;
+  continent: Continent | "all";
   onQueryChange: (value: string) => void;
   onStatusChange: (value: CountryStatus | "all") => void;
   onSortChange: (value: CountrySort) => void;
+  onContinentChange: (value: Continent | "all") => void;
 }) {
   return (
-    <section className="grid gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-white/5 md:grid-cols-[1fr_220px_180px]">
+    <section className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-white/5 md:grid-cols-[1fr_190px_190px_170px]">
       <label className="relative block">
         <span className="sr-only">Land suchen</span>
         <Search
@@ -34,6 +38,24 @@ export function CountryFilters({
           placeholder="Nach Land suchen..."
           value={query}
         />
+      </label>
+
+      <label>
+        <span className="sr-only">Kontinent filtern</span>
+        <select
+          className="h-11 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-sm font-medium text-graphite-800 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
+          onChange={(event) =>
+            onContinentChange(event.target.value as Continent | "all")
+          }
+          value={continent}
+        >
+          <option value="all">Alle Kontinente</option>
+          {continents.map((item) => (
+            <option key={item} value={item}>
+              {continentLabels[item]}
+            </option>
+          ))}
+        </select>
       </label>
 
       <label>
@@ -64,9 +86,9 @@ export function CountryFilters({
           <option value="newest">Neueste zuerst</option>
           <option value="name">Name A-Z</option>
           <option value="rating">Rating hoch</option>
+          <option value="status">Status</option>
         </select>
       </label>
     </section>
   );
 }
-

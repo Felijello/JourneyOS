@@ -31,11 +31,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de" suppressHydrationWarning>
+    <html data-scroll-behavior="smooth" lang="de" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AppShell>{children}</AppShell>
       </body>
     </html>
   );
 }
-

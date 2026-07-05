@@ -1,17 +1,23 @@
+-- Run this only while authenticated in a development project.
+-- RLS uses auth.uid(), so the inserted rows belong to the current user.
+
 insert into public.countries (
   name,
+  country_code,
   continent,
   status,
-  personal_rating,
+  rating,
   short_note,
   long_note,
   best_travel_months,
   visibility,
   latitude,
-  longitude
+  longitude,
+  cover_photo_url
 ) values
 (
   'Japan',
+  'JP',
   'Asia',
   'must_visit',
   10,
@@ -20,10 +26,12 @@ insert into public.countries (
   'März bis Mai oder Oktober bis November',
   'private',
   36.2048,
-  138.2529
+  138.2529,
+  'https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&w=900&q=80'
 ),
 (
   'Island',
+  'IS',
   'Europe',
   'planned',
   9,
@@ -32,5 +40,6 @@ insert into public.countries (
   'Juni bis September',
   'family',
   64.9631,
-  -19.0208
+  -19.0208,
+  'https://images.unsplash.com/photo-1504829857797-ddff29c27927?auto=format&fit=crop&w=900&q=80'
 );

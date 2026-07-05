@@ -1,17 +1,39 @@
-﻿# JourneyOS
+# JourneyOS
 
-JourneyOS ist ein persönliches Reise-Betriebssystem. V1 verwaltet Länder mit Status, Bewertung, Notizen, bester Reisezeit, Sichtbarkeit, Dashboard-Statistiken und einer Kartenansicht.
+JourneyOS ist ein persönliches Reise-Betriebssystem. Die App hilft dabei,
+besuchte Länder, Wunschziele, Orte, Fotos, Trips, Tagespläne, Links, Budgets,
+Packlisten, Wetterchecks und spätere AI-Reiseideen an einem Ort zu sammeln.
 
 Die UI ist Deutsch. Code, Dateinamen, Variablen und Datenbankfelder sind Englisch.
+
+## Features in V1
+
+- Helles, responsives JourneyOS Dashboard mit Desktop-Sidebar und Mobile Bottom Navigation
+- Statistik-Karten für besuchte, geplante, Wishlist- und gespeicherte Länder
+- Länder anlegen, bearbeiten, löschen, suchen, filtern und sortieren
+- Status: Besucht, Geplant, Will ich unbedingt hin, Vielleicht irgendwann, Kein Interesse
+- Sichtbarkeit: private, family, public als Datenmodell-Vorbereitung
+- Länder-Detailseiten mit Notizen, Bewertung, Reisezeit, Karte, Wetter, Orten, Fotos, Links und AI-Panel
+- Orte innerhalb von Ländern anlegen, bearbeiten und löschen
+- Trips anlegen, bearbeiten und löschen
+- Trip-Detailseiten mit Tagesplanung, Tagespunkten, Packliste, Links, Fotos, Wetter und Routing-Hinweis
+- Weltkarte und Detailkarten mit Leaflet-Markern
+- Open-Meteo Wettercheck ohne API-Key
+- Supabase Auth/Database/Storage vorbereitet
+- Lokaler Demo-Modus mit `localStorage`, falls Supabase noch nicht bereit ist
+- Gemini AI und OpenRouteService vorbereitet, ohne Pflicht für API-Keys
 
 ## Tech Stack
 
 - Next.js App Router
 - TypeScript
 - Tailwind CSS
-- Supabase für Auth, Datenbank und später Storage
+- Supabase für Auth, Postgres und Storage
 - Leaflet / React-Leaflet für Karten
-- Vercel-ready Projektstruktur
+- Open-Meteo für Wetter
+- OpenRouteService vorbereitet für Routing
+- Gemini API vorbereitet für AI-Texte
+- Vercel-ready
 
 ## Lokal starten
 
@@ -22,108 +44,129 @@ npm run dev
 
 Dann `http://localhost:3000` öffnen.
 
-Ohne Supabase-Variablen startet JourneyOS automatisch im lokalen Browsermodus mit Beispieldaten. Änderungen werden in `localStorage` gespeichert.
+Für Checks:
 
-## Umgebungsvariablen
+```bash
+npm run lint
+npx tsc --noEmit
+npm run build
+```
+
+## Environment Variables
 
 Kopiere `.env.example` nach `.env.local`:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_OPENROUTESERVICE_API_KEY=
+NEXT_PUBLIC_MAPTILER_KEY=
+GEMINI_API_KEY=
 ```
 
-Die Werte findest du in Supabase unter Project Settings -> API.
+Pflicht für Supabase:
 
-## Supabase einrichten
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-1. Neues Supabase-Projekt erstellen.
-2. In Supabase den SQL Editor öffnen.
+Optional:
+
+- `NEXT_PUBLIC_OPENROUTESERVICE_API_KEY`: aktiviert spätere Routenberechnung
+- `NEXT_PUBLIC_MAPTILER_KEY`: nutzt MapTiler statt OpenStreetMap-Fallback
+- `GEMINI_API_KEY`: serverseitig, aktiviert AI-Generierung über `/api/ai/generate`
+
+Ohne optionale Keys läuft JourneyOS weiter und zeigt Setup-Hinweise.
+
+## Supabase Setup
+
+1. Supabase-Projekt öffnen.
+2. SQL Editor öffnen.
 3. `supabase/schema.sql` ausführen.
 4. Authentication -> Providers -> Email aktivieren.
-5. Optional Magic Links aktivieren und die Site URL auf deine lokale oder Vercel-URL setzen.
-6. `.env.local` mit URL und Anon Key füllen.
+5. Site URL und Redirect URLs für lokal und Vercel setzen.
+6. `.env.local` mit Supabase URL und Anon Key füllen.
 7. App neu starten.
-8. In JourneyOS unter Einstellungen per Magic Link anmelden.
 
-Optional: `supabase/seed.sql` enthält Beispieldaten. Führe es nur in einer Entwicklungsumgebung aus und beachte, dass RLS einen angemeldeten User erwartet.
-
-## Datenmodell V1
-
-Implementiert:
+Das Schema erstellt:
 
 - `profiles`
 - `countries`
-
-`countries` enthält:
-
-- `name`
-- `continent`
-- `status`
-- `personal_rating`
-- `short_note`
-- `long_note`
-- `best_travel_months`
-- `visibility`
-- `latitude`
-- `longitude`
-- `created_at`
-- `updated_at`
-
-Vorbereitet als Schema-Kommentare:
-
 - `places`
 - `trips`
 - `trip_days`
+- `trip_day_items`
 - `photos`
 - `routes`
 - `saved_links`
 - `packing_items`
 - `ai_generations`
 
-## V1 Features
+RLS ist aktiviert. Nutzer können eigene Daten verwalten. Öffentliche Zeilen sind
+für spätere Sharing-Features lesbar vorbereitet. `family` ist bewusst noch nicht
+freigeschaltet; dafür braucht V2 eine Membership-/Einladungs-Tabelle.
 
-- Dashboard mit Kennzahlen für besucht, geplant, Wishlist und total gespeichert
-- Länderübersicht mit Suche, Statusfilter und Sortierung
-- Land hinzufügen, bearbeiten und löschen
-- Detailseite pro Land
-- Status-Badges und Sichtbarkeitsfeld
-- Leaflet-Weltkarte mit Markern, wenn Koordinaten vorhanden sind
-- Mobile Bottom Navigation
-- Desktop Sidebar
-- Loading-, Error- und Empty-States
-- Supabase Auth per Magic Link, wenn Credentials vorhanden sind
-- Lokaler Fallback ohne Secrets
+## Storage Bucket
 
-## Deployment
+`supabase/schema.sql` erstellt den privaten Bucket `travel-photos` mit:
 
-Vercel:
+- maximal 6 MB
+- erlaubten MIME Types: JPEG, PNG, WEBP, GIF
+- Storage Policies pro User-Ordner
 
-1. GitHub-Repository verbinden.
+Uploads werden unter `userId/...` gespeichert. Die App nutzt Signed URLs für die
+Anzeige, damit private Fotos nicht als öffentlicher Bucket behandelt werden.
+
+## Seed Data
+
+`supabase/seed.sql` enthält Beispiel-Länder. Nur in einer Entwicklungsumgebung
+ausführen, während ein User angemeldet ist, weil RLS `auth.uid()` verwendet.
+
+## Vercel Deployment
+
+1. GitHub-Repository mit Vercel verbinden.
 2. Environment Variables in Vercel setzen:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - optional `NEXT_PUBLIC_OPENROUTESERVICE_API_KEY`
+   - optional `NEXT_PUBLIC_MAPTILER_KEY`
+   - optional `GEMINI_API_KEY`
 3. Deploy auslösen.
-4. In Supabase die Vercel-Domain als Site URL / Redirect URL ergänzen.
+4. In Supabase die Vercel-Domain als Redirect URL eintragen.
+5. `supabase/schema.sql` im Supabase SQL Editor ausführen.
+
+## GitHub
+
+Das Projekt ist für das Repository `Felijello/JourneyOS` vorbereitet. `.env.local`,
+`.vercel`, `.next`, `node_modules` und Build-Artefakte werden nicht committed.
+
+## Manual Test Checklist
+
+- Dashboard auf Desktop und iPhone-Breite öffnen
+- Bottom Navigation auf Mobile testen
+- Land anlegen, bearbeiten und löschen
+- Länder suchen, nach Status/Kontinent filtern und sortieren
+- Country Detail öffnen, Ort hinzufügen, Ort löschen
+- Foto-Upload mit Supabase-Login und Bucket testen
+- Trip anlegen, bearbeiten und löschen
+- Trip-Tag hinzufügen, Tagespunkt hinzufügen und löschen
+- Packlistenpunkt hinzufügen, abhaken und löschen
+- Saved Link mit Booking/GetYourGuide URL speichern
+- Karte mit und ohne MapTiler-Key prüfen
+- Wetterpanel bei Ländern mit Koordinaten prüfen
+- AI-Buttons ohne Gemini-Key und mit Gemini-Key testen
+- Vercel Deployment öffnen und Supabase Redirect URL prüfen
 
 ## Roadmap
 
-V2+ kann auf der vorhandenen Struktur aufbauen:
+- Öffentliche/private Profile und Familienfreigaben
+- Länder-Polygone statt nur Marker
+- Place Detail Pages mit Galerien und Bewertungen
+- Routenberechnung mit OpenRouteService und GeoJSON-Anzeige
+- Historische Klima-/Beste-Reisezeit-Auswertung
+- Budgetauswertung und Hotelverwaltung
+- EXIF/GPS-Auswertung für Fotos
+- AI-Länderbeschreibungen, Place-Texte, Trip-Pläne, Zielvergleiche,
+  Reisezeit-Checks, Routenoptimierung und Zielvorschläge
 
-- Foto-Uploads und Galerien über Supabase Storage
-- Sichtbarkeit pro Trip und Foto
-- Country Detail Pages mit Historie, Ratings und Orten
-- Places wie Städte, Hotels, Viewpoints, Restaurants und Aktivitäten
-- Kartenmarker und Detailkarten
-- Route Planning
-- Day-by-day Trip Planning
-- Wetterchecks und beste Reisezeit
-- Aktivitätsvorschläge und gespeicherte Links
-- Hotel Saving, Budgets und Packlisten
-- AI-generierte Country-, Place- und Trip-Beschreibungen
-- AI-Vergleich von Destinationen
-- AI-Check für Reisezeitpunkte
-- AI-Routenoptimierung
-- AI-Zielvorschläge nach persönlichen Wünschen
-
-Die spätere AI soll locker und persönlich auf Deutsch schreiben, nicht wie ein Reisebüro. Erste Tone-Guides liegen in `src/lib/ai/travel-prompts.ts`.
+Die spätere AI soll locker, persönlich und hilfreich auf Deutsch schreiben, wie
+ein Travel Buddy statt ein Reisebüro.

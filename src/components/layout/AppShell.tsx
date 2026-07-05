@@ -1,17 +1,23 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Bell,
+  CalendarDays,
   Compass,
   Globe2,
   Home,
   Map,
   Plus,
+  Search,
   Settings,
   Sparkles,
 } from "lucide-react";
-import { CountryProvider, useCountries } from "@/components/providers/CountryProvider";
+import {
+  CountryProvider,
+  useTravel,
+} from "@/components/providers/CountryProvider";
 import { LinkButton } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
@@ -19,16 +25,24 @@ import type { ReactNode } from "react";
 const navigation = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/countries", label: "Länder", icon: Globe2 },
-  { href: "/countries/new", label: "Hinzufügen", icon: Plus },
+  { href: "/trips", label: "Trips", icon: CalendarDays },
+  { href: "/map", label: "Karte", icon: Map },
   { href: "/settings", label: "Einstellungen", icon: Settings },
 ];
 
 function DataSourcePill() {
-  const { dataSource } = useCountries();
+  const { dataSource, capabilityStatus } = useTravel();
 
   return (
-    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-graphite-600 ring-1 ring-zinc-200 dark:bg-white/10 dark:text-zinc-300 dark:ring-white/10">
-      {dataSource === "supabase" ? "Supabase aktiv" : "Lokaler Modus"}
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1",
+        dataSource === "supabase"
+          ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+          : "bg-amber-50 text-amber-700 ring-amber-200",
+      )}
+    >
+      {capabilityStatus.supabase ? "Supabase aktiv" : "Demo-Modus"}
     </span>
   );
 }
@@ -37,22 +51,22 @@ function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 overflow-y-auto border-r border-zinc-200 bg-white/90 px-5 py-6 backdrop-blur-xl dark:border-white/10 dark:bg-graphite-950/90 lg:flex lg:flex-col">
-      <Link className="flex items-center gap-3" href="/">
-        <span className="flex size-11 items-center justify-center rounded-xl bg-graphite-950 text-white shadow-soft dark:bg-white dark:text-graphite-950">
+    <aside className="fixed inset-y-4 left-4 z-30 hidden w-64 overflow-y-auto rounded-3xl border border-slate-200/80 bg-white/82 px-4 py-5 shadow-card backdrop-blur-2xl lg:flex lg:flex-col">
+      <Link className="flex items-center gap-3 px-2" href="/">
+        <span className="flex size-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-sm">
           <Compass aria-hidden="true" size={22} />
         </span>
         <span>
-          <span className="block text-lg font-semibold text-graphite-950 dark:text-white">
+          <span className="block text-lg font-semibold tracking-tight text-slate-950">
             JourneyOS
           </span>
-          <span className="block text-xs font-medium text-graphite-500 dark:text-zinc-400">
-            Dein Reise-Betriebssystem
+          <span className="block text-xs font-medium text-slate-500">
+            Travel Operating System
           </span>
         </span>
       </Link>
 
-      <nav className="mt-10 space-y-2" aria-label="Hauptnavigation">
+      <nav className="mt-8 space-y-1.5" aria-label="Hauptnavigation">
         {navigation.map((item) => {
           const Icon = item.icon;
           const isActive =
@@ -63,30 +77,39 @@ function Sidebar() {
           return (
             <Link
               className={cn(
-                "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold transition",
+                "flex min-h-11 items-center gap-3 rounded-2xl px-3 text-sm font-semibold transition",
                 isActive
-                  ? "bg-graphite-950 text-white shadow-soft dark:bg-white dark:text-graphite-950"
-                  : "text-graphite-600 hover:bg-zinc-100 hover:text-graphite-950 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white",
+                  ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-950",
               )}
               href={item.href}
               key={item.href}
             >
-              <Icon aria-hidden="true" size={19} />
+              <Icon aria-hidden="true" size={18} />
               {item.label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="mt-auto rounded-xl border border-zinc-200 bg-mist-50 p-4 dark:border-white/10 dark:bg-white/5">
-        <div className="flex items-center gap-2 text-sm font-semibold text-graphite-950 dark:text-white">
-          <Sparkles aria-hidden="true" size={17} />
-          AI später vorbereitet
+      <div className="mt-auto space-y-4">
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+            <Sparkles aria-hidden="true" className="text-blue-600" size={17} />
+            AI vorbereitet
+          </div>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Sobald Gemini verbunden ist, schreibt JourneyOS entspannte
+            Reisebeschreibungen und Plan-Ideen auf Deutsch.
+          </p>
         </div>
-        <p className="mt-2 text-sm leading-6 text-graphite-600 dark:text-zinc-300">
-          V1 sammelt deine Reisedaten sauber. Beschreibungen, Pläne und
-          Vergleiche können später darauf aufbauen.
-        </p>
+        <div className="flex items-center gap-3 border-t border-slate-200 pt-4">
+          <div className="size-10 rounded-full bg-[url('https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80')] bg-cover" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-slate-900">Felix</p>
+            <p className="text-xs text-blue-600">Premium Traveller</p>
+          </div>
+        </div>
       </div>
     </aside>
   );
@@ -99,7 +122,7 @@ function MobileNav() {
   return (
     <nav
       aria-label="Mobile Navigation"
-      className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-xl border border-zinc-200 bg-white/92 p-1 shadow-large backdrop-blur-xl dark:border-white/10 dark:bg-graphite-900/92 lg:hidden"
+      className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-3xl border border-slate-200 bg-white/94 p-1.5 shadow-large backdrop-blur-2xl lg:hidden"
     >
       {mobileItems.map((item) => {
         const Icon = item.icon;
@@ -111,10 +134,10 @@ function MobileNav() {
         return (
           <Link
             className={cn(
-              "flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-semibold transition",
+              "flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[11px] font-semibold transition",
               isActive
-                ? "bg-graphite-950 text-white dark:bg-white dark:text-graphite-950"
-                : "text-graphite-500 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/10",
+                ? "bg-blue-50 text-blue-700 ring-1 ring-blue-100"
+                : "text-slate-500 hover:bg-slate-50",
             )}
             href={item.href}
             key={item.href}
@@ -128,35 +151,56 @@ function MobileNav() {
   );
 }
 
+function TopBar() {
+  return (
+    <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-[#f8fbff]/85 px-4 py-4 backdrop-blur-2xl sm:px-6 lg:border-none lg:bg-transparent lg:px-8 lg:pt-8">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+        <Link className="flex items-center gap-3 lg:hidden" href="/">
+          <span className="flex size-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-950 shadow-sm">
+            <Compass aria-hidden="true" size={20} />
+          </span>
+          <span className="text-base font-semibold tracking-tight text-slate-950">
+            JourneyOS
+          </span>
+        </Link>
+
+        <label className="hidden h-12 min-w-0 flex-1 max-w-xl items-center gap-3 rounded-2xl border border-slate-200 bg-white/86 px-4 shadow-sm lg:flex">
+          <Search aria-hidden="true" className="text-slate-400" size={18} />
+          <input
+            className="h-full min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+            placeholder="Länder, Städte oder Notizen suchen..."
+          />
+          <kbd className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500">
+            ⌘ K
+          </kbd>
+        </label>
+
+        <div className="flex items-center gap-2">
+          <DataSourcePill />
+          <button
+            className="hidden size-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:text-slate-950 sm:flex"
+            type="button"
+            title="Benachrichtigungen"
+          >
+            <Bell aria-hidden="true" size={18} />
+          </button>
+          <LinkButton className="rounded-2xl" href="/countries/new">
+            <Plus aria-hidden="true" size={17} />
+            Land
+          </LinkButton>
+        </div>
+      </div>
+    </header>
+  );
+}
+
 function ShellContent({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-zinc-50 text-graphite-950 dark:bg-graphite-950 dark:text-white">
+    <div className="min-h-screen text-slate-950">
       <Sidebar />
       <main className="min-h-screen pb-28 lg:ml-72 lg:pb-0">
-        <header className="sticky top-0 z-20 border-b border-zinc-200 bg-zinc-50/85 px-4 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-graphite-950/85 sm:px-6 lg:px-8">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-            <Link className="flex items-center gap-3 lg:hidden" href="/">
-              <span className="flex size-10 items-center justify-center rounded-lg bg-graphite-950 text-white dark:bg-white dark:text-graphite-950">
-                <Compass aria-hidden="true" size={20} />
-              </span>
-              <span className="text-base font-semibold">JourneyOS</span>
-            </Link>
-            <div className="hidden items-center gap-2 lg:flex">
-              <Map aria-hidden="true" className="text-moss-600" size={18} />
-              <span className="text-sm font-medium text-graphite-600 dark:text-zinc-300">
-                Länder, Pläne und Erinnerungen an einem Ort.
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <DataSourcePill />
-              <LinkButton className="hidden sm:inline-flex" href="/countries/new">
-                <Plus aria-hidden="true" size={17} />
-                Land
-              </LinkButton>
-            </div>
-          </div>
-        </header>
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <TopBar />
+        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:pb-12 lg:pt-2">
           {children}
         </div>
       </main>

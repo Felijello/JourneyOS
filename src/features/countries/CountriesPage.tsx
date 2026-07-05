@@ -7,12 +7,13 @@ import { CountryFilters } from "@/components/countries/CountryFilters";
 import { useCountries } from "@/components/providers/CountryProvider";
 import { LinkButton } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import type { CountrySort, CountryStatus } from "@/types/country";
+import type { Continent, CountrySort, CountryStatus } from "@/types/country";
 
 export function CountriesPage() {
   const { countries, isLoading, error } = useCountries();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<CountryStatus | "all">("all");
+  const [continent, setContinent] = useState<Continent | "all">("all");
   const [sort, setSort] = useState<CountrySort>("newest");
 
   const filteredCountries = useMemo(() => {
@@ -21,6 +22,9 @@ export function CountriesPage() {
         country.name.toLowerCase().includes(query.trim().toLowerCase()),
       )
       .filter((country) => (status === "all" ? true : country.status === status))
+      .filter((country) =>
+        continent === "all" ? true : country.continent === continent,
+      )
       .toSorted((a, b) => {
         if (sort === "name") {
           return a.name.localeCompare(b.name, "de");
@@ -28,9 +32,12 @@ export function CountriesPage() {
         if (sort === "rating") {
           return b.personalRating - a.personalRating;
         }
+        if (sort === "status") {
+          return a.status.localeCompare(b.status, "de");
+        }
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-  }, [countries, query, sort, status]);
+  }, [continent, countries, query, sort, status]);
 
   return (
     <div className="space-y-6">
@@ -51,6 +58,8 @@ export function CountriesPage() {
       </section>
 
       <CountryFilters
+        continent={continent}
+        onContinentChange={setContinent}
         onQueryChange={setQuery}
         onSortChange={setSort}
         onStatusChange={setStatus}

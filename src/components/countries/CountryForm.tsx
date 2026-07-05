@@ -14,6 +14,7 @@ import type { Country, CountryFormInput } from "@/types/country";
 
 const defaultInput: CountryFormInput = {
   name: "",
+  countryCode: "",
   continent: "Europe",
   status: "visited",
   personalRating: 7,
@@ -23,6 +24,9 @@ const defaultInput: CountryFormInput = {
   visibility: "private",
   latitude: null,
   longitude: null,
+  coverPhotoUrl: "",
+  visitedFrom: null,
+  visitedTo: null,
 };
 
 function toInput(country?: Country): CountryFormInput {
@@ -32,6 +36,7 @@ function toInput(country?: Country): CountryFormInput {
 
   return {
     name: country.name,
+    countryCode: country.countryCode ?? "",
     continent: country.continent,
     status: country.status,
     personalRating: country.personalRating,
@@ -41,6 +46,9 @@ function toInput(country?: Country): CountryFormInput {
     visibility: country.visibility,
     latitude: country.latitude ?? null,
     longitude: country.longitude ?? null,
+    coverPhotoUrl: country.coverPhotoUrl ?? "",
+    visitedFrom: country.visitedFrom ?? null,
+    visitedTo: country.visitedTo ?? null,
   };
 }
 
@@ -65,7 +73,7 @@ export function CountryForm({
     setFormError(null);
 
     if (!input.name.trim()) {
-      setFormError("Bitte gib einen LÃ¤ndernamen ein.");
+      setFormError("Bitte gib einen Ländernamen ein.");
       return;
     }
 
@@ -74,9 +82,13 @@ export function CountryForm({
       const savedCountry = await onSubmit({
         ...input,
         name: input.name.trim(),
+        countryCode: input.countryCode?.trim().toUpperCase() || null,
         shortNote: input.shortNote.trim(),
         longNote: input.longNote.trim(),
         bestTravelMonths: input.bestTravelMonths.trim(),
+        coverPhotoUrl: input.coverPhotoUrl?.trim() || null,
+        visitedFrom: input.visitedFrom || null,
+        visitedTo: input.visitedTo || null,
       });
       router.push(`/countries/${savedCountry.id}`);
     } catch (error) {
@@ -92,7 +104,7 @@ export function CountryForm({
 
   return (
     <form
-      className="space-y-5 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5 sm:p-6"
+      className="space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5 sm:p-6"
       onSubmit={handleSubmit}
     >
       {formError ? (
@@ -134,6 +146,37 @@ export function CountryForm({
               </option>
             ))}
           </select>
+        </label>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <label className="space-y-2">
+          <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
+            Ländercode
+          </span>
+          <input
+            className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base uppercase text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
+            maxLength={2}
+            onChange={(event) =>
+              setInput({ ...input, countryCode: event.target.value.toUpperCase() })
+            }
+            placeholder="JP"
+            value={input.countryCode ?? ""}
+          />
+        </label>
+        <label className="space-y-2 md:col-span-2">
+          <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
+            Cover-Foto-URL optional
+          </span>
+          <input
+            className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
+            onChange={(event) =>
+              setInput({ ...input, coverPhotoUrl: event.target.value })
+            }
+            placeholder="https://..."
+            type="url"
+            value={input.coverPhotoUrl ?? ""}
+          />
         </label>
       </div>
 
@@ -211,6 +254,35 @@ export function CountryForm({
           value={input.shortNote}
         />
       </label>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="space-y-2">
+          <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
+            Besuch von optional
+          </span>
+          <input
+            className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
+            onChange={(event) =>
+              setInput({ ...input, visitedFrom: event.target.value || null })
+            }
+            type="date"
+            value={input.visitedFrom ?? ""}
+          />
+        </label>
+        <label className="space-y-2">
+          <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
+            Besuch bis optional
+          </span>
+          <input
+            className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
+            onChange={(event) =>
+              setInput({ ...input, visitedTo: event.target.value || null })
+            }
+            type="date"
+            value={input.visitedTo ?? ""}
+          />
+        </label>
+      </div>
 
       <label className="space-y-2 block">
         <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
