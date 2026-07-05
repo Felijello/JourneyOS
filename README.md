@@ -1,36 +1,129 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+﻿# JourneyOS
 
-## Getting Started
+JourneyOS ist ein persönliches Reise-Betriebssystem. V1 verwaltet Länder mit Status, Bewertung, Notizen, bester Reisezeit, Sichtbarkeit, Dashboard-Statistiken und einer Kartenansicht.
 
-First, run the development server:
+Die UI ist Deutsch. Code, Dateinamen, Variablen und Datenbankfelder sind Englisch.
+
+## Tech Stack
+
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- Supabase für Auth, Datenbank und später Storage
+- Leaflet / React-Leaflet für Karten
+- Vercel-ready Projektstruktur
+
+## Lokal starten
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Dann `http://localhost:3000` öffnen.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Ohne Supabase-Variablen startet JourneyOS automatisch im lokalen Browsermodus mit Beispieldaten. Änderungen werden in `localStorage` gespeichert.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Umgebungsvariablen
 
-## Learn More
+Kopiere `.env.example` nach `.env.local`:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Die Werte findest du in Supabase unter Project Settings -> API.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Supabase einrichten
 
-## Deploy on Vercel
+1. Neues Supabase-Projekt erstellen.
+2. In Supabase den SQL Editor öffnen.
+3. `supabase/schema.sql` ausführen.
+4. Authentication -> Providers -> Email aktivieren.
+5. Optional Magic Links aktivieren und die Site URL auf deine lokale oder Vercel-URL setzen.
+6. `.env.local` mit URL und Anon Key füllen.
+7. App neu starten.
+8. In JourneyOS unter Einstellungen per Magic Link anmelden.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Optional: `supabase/seed.sql` enthält Beispieldaten. Führe es nur in einer Entwicklungsumgebung aus und beachte, dass RLS einen angemeldeten User erwartet.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Datenmodell V1
+
+Implementiert:
+
+- `profiles`
+- `countries`
+
+`countries` enthält:
+
+- `name`
+- `continent`
+- `status`
+- `personal_rating`
+- `short_note`
+- `long_note`
+- `best_travel_months`
+- `visibility`
+- `latitude`
+- `longitude`
+- `created_at`
+- `updated_at`
+
+Vorbereitet als Schema-Kommentare:
+
+- `places`
+- `trips`
+- `trip_days`
+- `photos`
+- `routes`
+- `saved_links`
+- `packing_items`
+- `ai_generations`
+
+## V1 Features
+
+- Dashboard mit Kennzahlen für besucht, geplant, Wishlist und total gespeichert
+- Länderübersicht mit Suche, Statusfilter und Sortierung
+- Land hinzufügen, bearbeiten und löschen
+- Detailseite pro Land
+- Status-Badges und Sichtbarkeitsfeld
+- Leaflet-Weltkarte mit Markern, wenn Koordinaten vorhanden sind
+- Mobile Bottom Navigation
+- Desktop Sidebar
+- Loading-, Error- und Empty-States
+- Supabase Auth per Magic Link, wenn Credentials vorhanden sind
+- Lokaler Fallback ohne Secrets
+
+## Deployment
+
+Vercel:
+
+1. GitHub-Repository verbinden.
+2. Environment Variables in Vercel setzen:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+3. Deploy auslösen.
+4. In Supabase die Vercel-Domain als Site URL / Redirect URL ergänzen.
+
+## Roadmap
+
+V2+ kann auf der vorhandenen Struktur aufbauen:
+
+- Foto-Uploads und Galerien über Supabase Storage
+- Sichtbarkeit pro Trip und Foto
+- Country Detail Pages mit Historie, Ratings und Orten
+- Places wie Städte, Hotels, Viewpoints, Restaurants und Aktivitäten
+- Kartenmarker und Detailkarten
+- Route Planning
+- Day-by-day Trip Planning
+- Wetterchecks und beste Reisezeit
+- Aktivitätsvorschläge und gespeicherte Links
+- Hotel Saving, Budgets und Packlisten
+- AI-generierte Country-, Place- und Trip-Beschreibungen
+- AI-Vergleich von Destinationen
+- AI-Check für Reisezeitpunkte
+- AI-Routenoptimierung
+- AI-Zielvorschläge nach persönlichen Wünschen
+
+Die spätere AI soll locker und persönlich auf Deutsch schreiben, nicht wie ein Reisebüro. Erste Tone-Guides liegen in `src/lib/ai/travel-prompts.ts`.
