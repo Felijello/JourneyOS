@@ -34,18 +34,21 @@ export function AuthPanel() {
 
     setIsSubmitting(true);
     setMessage(null);
+    const redirectTo =
+      typeof window !== "undefined"
+        ? new URL("/auth/callback", window.location.origin).toString()
+        : undefined;
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo:
-          typeof window !== "undefined" ? window.location.origin : undefined,
+        emailRedirectTo: redirectTo,
       },
     });
     setIsSubmitting(false);
     setMessage(
       error
         ? error.message
-        : "Magic Link wurde verschickt. Check kurz dein Postfach.",
+        : "Magic Link wurde verschickt. Der Link führt auf die Domain zurück, auf der du ihn angefordert hast.",
     );
   }
 

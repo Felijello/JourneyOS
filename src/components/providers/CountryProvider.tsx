@@ -54,6 +54,7 @@ import type {
 } from "@/types/country";
 
 type DataSource = "supabase" | "local";
+type SupabaseAuthStatus = "unconfigured" | "signed_out" | "signed_in" | "error";
 
 type ServerCapabilities = {
   ai: boolean;
@@ -64,8 +65,14 @@ type TravelContextValue = TravelState & {
   isLoading: boolean;
   error: string | null;
   dataSource: DataSource;
+  supabaseStatus: {
+    configured: boolean;
+    authenticated: boolean;
+    authStatus: SupabaseAuthStatus;
+  };
   capabilityStatus: {
     supabase: boolean;
+    supabaseAuthenticated: boolean;
     weather: boolean;
     routing: boolean;
     ai: boolean;
@@ -216,23 +223,34 @@ export function CountryProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<TravelState>(() => seedTravelState);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dataSource, setDataSource] = useState<DataSource>(
-    isSupabaseConfigured ? "supabase" : "local",
+  const [dataSource, setDataSource] = useState<DataSource>("local");
+  const [supabaseAuthStatus, setSupabaseAuthStatus] = useState<SupabaseAuthStatus>(
+    isSupabaseConfigured ? "signed_out" : "unconfigured",
   );
   const [serverCapabilities, setServerCapabilities] = useState<ServerCapabilities>({
     ai: false,
     routing: false,
   });
 
+  const supabaseStatus = useMemo(
+    () => ({
+      configured: isSupabaseConfigured,
+      authenticated: supabaseAuthStatus === "signed_in",
+      authStatus: supabaseAuthStatus,
+    }),
+    [supabaseAuthStatus],
+  );
+
   const capabilityStatus = useMemo(
     () => ({
-      supabase: isSupabaseConfigured && dataSource === "supabase",
+      supabase: isSupabaseConfigured,
+      supabaseAuthenticated: supabaseAuthStatus === "signed_in",
       weather: true,
       routing: serverCapabilities.routing,
       ai: serverCapabilities.ai,
       maptiler: Boolean(process.env.NEXT_PUBLIC_MAPTILER_KEY),
     }),
-    [dataSource, serverCapabilities],
+    [serverCapabilities, supabaseAuthStatus],
   );
 
   const persist = useCallback((updater: (current: TravelState) => TravelState) => {
@@ -252,9 +270,35 @@ export function CountryProvider({ children }: { children: ReactNode }) {
     if (!supabase) {
       setState(localState);
       setDataSource("local");
+      setSupabaseAuthStatus("unconfigured");
       setIsLoading(false);
       return;
     }
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError) {
+      setState(localState);
+      setDataSource("local");
+      setSupabaseAuthStatus("error");
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!user) {
+      setState(localState);
+      setDataSource("local");
+      setSupabaseAuthStatus("signed_out");
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setSupabaseAuthStatus("signed_in");
 
     const [
       countriesResult,
@@ -305,6 +349,9 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       setError(`${requestError.message} · Lokaler Demo-Modus bleibt aktiv.`);
       setState(localState);
       setDataSource("local");
+      setError(
+        `Supabase ist verbunden, aber die Daten konnten nicht geladen werden: ${requestError.message}. Prüfe schema.sql und RLS-Policies.`,
+      );
     } else {
       setState({
         countries: (countriesResult.data ?? []).map(mapCountryFromRow),
@@ -319,6 +366,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
         aiGenerations: (aiGenerationsResult.data ?? []).map(mapAiGenerationFromRow),
       });
       setDataSource("supabase");
+      setError(null);
     }
 
     setIsLoading(false);
@@ -950,6 +998,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       isLoading,
       error,
       dataSource,
+      supabaseStatus,
       capabilityStatus,
       createCountry,
       updateCountry,
@@ -980,6 +1029,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       isLoading,
       error,
       dataSource,
+      supabaseStatus,
       capabilityStatus,
       createCountry,
       updateCountry,

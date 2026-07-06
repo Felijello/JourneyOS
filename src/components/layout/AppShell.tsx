@@ -31,18 +31,32 @@ const navigation = [
 ];
 
 function DataSourcePill() {
-  const { dataSource, capabilityStatus } = useTravel();
+  const { dataSource, capabilityStatus, supabaseStatus } = useTravel();
+  const label =
+    dataSource === "supabase"
+      ? "Supabase aktiv"
+      : capabilityStatus.supabase
+        ? supabaseStatus.authStatus === "error"
+          ? "Supabase prüfen"
+          : supabaseStatus.authenticated
+          ? "Supabase prüfen"
+          : "Login nötig"
+        : "Demo-Modus";
+  const tone =
+    dataSource === "supabase"
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+      : capabilityStatus.supabase
+        ? "bg-blue-50 text-blue-700 ring-blue-200"
+        : "bg-amber-50 text-amber-700 ring-amber-200";
 
   return (
     <span
       className={cn(
         "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1",
-        dataSource === "supabase"
-          ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-          : "bg-amber-50 text-amber-700 ring-amber-200",
+        tone,
       )}
     >
-      {capabilityStatus.supabase ? "Supabase aktiv" : "Demo-Modus"}
+      {label}
     </span>
   );
 }

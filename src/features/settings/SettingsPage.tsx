@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Bot,
   CloudSun,
@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { AuthPanel } from "@/components/auth/AuthPanel";
 import { useTravel } from "@/components/providers/CountryProvider";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 const roadmap = [
   "Öffentliche Reiseprofile für Familie und Freunde",
@@ -30,9 +29,11 @@ type HealthStatus = {
 };
 
 export function SettingsPage() {
-  const { dataSource, capabilityStatus } = useTravel();
+  const { dataSource, capabilityStatus, supabaseStatus } = useTravel();
   const [health, setHealth] = useState<HealthStatus>({});
   const supabaseConnected = dataSource === "supabase";
+  const supabaseReady = supabaseStatus.configured;
+  const supabaseAuthError = supabaseStatus.authStatus === "error";
 
   useEffect(() => {
     fetch("/api/health")
@@ -52,40 +53,48 @@ export function SettingsPage() {
           Einstellungen & Info
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Hier siehst du, welche Integrationen aktiv sind. Wenn Supabase
-          konfiguriert ist, aber noch Demo-Modus erscheint, liegt es meistens an
-          Login, API-Key oder einem noch nicht ausgeführten SQL-Schema.
+          Hier siehst du, welche Integrationen bereit sind. Supabase kann
+          korrekt konfiguriert sein, auch wenn private Daten erst nach deinem
+          Login geladen werden.
         </p>
       </div>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <StatusCard
-          active={supabaseConnected}
+          active={supabaseReady}
           description={
             supabaseConnected
               ? "Supabase verbunden: Länder, Orte, Trips, Fotos, Links und Packlisten nutzen die Datenbank."
-              : isSupabaseConfigured
-                ? "Supabase Env Vars sind gesetzt, aber JourneyOS ist noch im Demo-Modus. Prüfe Login, API-Key und ob supabase/schema.sql ausgeführt wurde."
-                : "Supabase Env Vars fehlen. JourneyOS läuft deshalb im Demo-Modus."
+              : supabaseAuthError
+                ? "Supabase Env Vars sind gesetzt, aber Auth konnte nicht geprüft werden. Prüfe URL, Anon Key und die Supabase Auth Settings."
+              : supabaseReady
+                ? "Supabase Env Vars sind gesetzt. Melde dich per Magic Link an, dann lädt JourneyOS deine privaten Tabellen."
+                : "Supabase Env Vars fehlen. JourneyOS läuft deshalb nur lokal."
           }
           icon={<Database size={22} />}
-          title={supabaseConnected ? "Supabase verbunden" : "Supabase nicht verbunden"}
+          title={
+            supabaseConnected
+              ? "Supabase verbunden"
+              : supabaseReady
+                ? "Supabase bereit"
+                : "Supabase fehlt"
+          }
         />
         <StatusCard
-          active={supabaseConnected}
+          active={supabaseReady}
           description={
             supabaseConnected
               ? "Storage ist bereit, sofern der Bucket travel-photos und die Policies aus schema.sql existieren."
-              : isSupabaseConfigured
-                ? "Storage wartet auf eine aktive Supabase-Verbindung. Danach funktionieren Uploads mit Login."
+              : supabaseReady
+                ? "Storage ist vorbereitet. Foto-Uploads starten nach Login und mit Bucket travel-photos."
                 : "Storage braucht Supabase Env Vars und den Bucket travel-photos."
           }
           icon={<HardDrive size={22} />}
-          title={supabaseConnected ? "Storage vorbereitet" : "Storage wartet"}
+          title={supabaseConnected ? "Storage vorbereitet" : "Storage bereit nach Login"}
         />
         <StatusCard
           active
-          description="Open-Meteo braucht keinen API-Key. Die Suche und Reisezeit-Checks nutzen Forecasts über Koordinaten."
+          description="Open-Meteo braucht keinen API-Key. Suche und Reisezeit-Checks nutzen Wetterdaten über Koordinaten."
           icon={<CloudSun size={22} />}
           title="Open-Meteo"
         />
@@ -93,7 +102,7 @@ export function SettingsPage() {
           active={Boolean(health.routing ?? capabilityStatus.routing)}
           description={
             health.routing ?? capabilityStatus.routing
-              ? "OpenRouteService ist serverseitig verbunden. Der Key wird nicht im Browser gebraucht."
+              ? "OpenRouteService ist serverseitig verbunden. Der Key muss nicht im Browser liegen."
               : "OPENROUTESERVICE_API_KEY fehlt serverseitig. Routing bleibt vorbereitet."
           }
           icon={<Route size={22} />}
@@ -103,8 +112,8 @@ export function SettingsPage() {
           active={Boolean(health.ai ?? capabilityStatus.ai)}
           description={
             health.ai ?? capabilityStatus.ai
-              ? "Gemini ist serverseitig verbunden. Suche und AI-Buttons können Antworten erzeugen."
-              : "GEMINI_API_KEY fehlt oder wird von Gemini abgelehnt. AI zeigt dann Fallbacks."
+              ? "Gemini ist serverseitig konfiguriert. Falls Gemini keinen Text liefert, nutzt JourneyOS eine saubere Kurzbeschreibung."
+              : "GEMINI_API_KEY fehlt oder wird von Gemini abgelehnt. JourneyOS zeigt dann eine lokale Kurzbeschreibung."
           }
           icon={<Bot size={22} />}
           title="Gemini AI"
@@ -129,7 +138,8 @@ export function SettingsPage() {
               <h2 className="text-xl font-semibold text-slate-950">Roadmap</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 V1 legt den Kern. Die nächsten Versionen können ohne großen
-                Umbau auf Sharing, Polygone, bessere AI-Flows und EXIF-Fotos aufbauen.
+                Umbau auf Sharing, Polygone, bessere AI-Flows und EXIF-Fotos
+                aufbauen.
               </p>
             </div>
           </div>
@@ -147,18 +157,20 @@ export function SettingsPage() {
           <div className="flex items-start gap-3">
             <Lock className="mt-1 text-blue-600" size={22} />
             <div>
-              <h2 className="text-xl font-semibold text-slate-950">Privacy-Konzept</h2>
+              <h2 className="text-xl font-semibold text-slate-950">
+                Privacy-Konzept
+              </h2>
               <p className="mt-3 text-sm leading-6 text-slate-600">
                 Private Daten bleiben standardmäßig privat. Länder, Orte,
                 Trips, Fotos und Links tragen bereits Sichtbarkeit. Supabase RLS
-                erlaubt volle Verwaltung nur für eigene Daten; öffentliches Lesen
-                ist nur für `public` vorbereitet.
+                erlaubt volle Verwaltung nur für eigene Daten; öffentliches
+                Lesen ist nur für public vorbereitet.
               </p>
             </div>
           </div>
           <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-            Familienfreigaben sind als Feld vorbereitet. Für echte Familiengruppen
-            braucht V2 eine Membership- oder Einladungs-Tabelle.
+            Familienfreigaben sind als Feld vorbereitet. Für echte
+            Familiengruppen braucht V2 eine Membership- oder Einladungs-Tabelle.
           </div>
         </article>
       </section>
@@ -176,7 +188,7 @@ function StatusCard({
 }: {
   active: boolean;
   description: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
 }) {
   return (
@@ -190,7 +202,7 @@ function StatusCard({
               : "bg-amber-50 text-amber-700 ring-amber-100"
           }`}
         >
-          {active ? "Aktiv" : "Prüfen"}
+          {active ? "Bereit" : "Prüfen"}
         </span>
       </div>
       <h2 className="mt-4 text-lg font-semibold text-slate-950">{title}</h2>

@@ -1,14 +1,17 @@
 "use client";
 
-import { MapPinned, Plus } from "lucide-react";
+import { useState } from "react";
+import { Expand, MapPinned, Plus, X } from "lucide-react";
 import { CountryCard } from "@/components/countries/CountryCard";
 import { WorldMap } from "@/components/map/WorldMap";
 import { useTravel } from "@/components/providers/CountryProvider";
+import { TravelSearch } from "@/components/travel/TravelSearch";
 import { LinkButton } from "@/components/ui/Button";
 import { countryStatuses, statusMapColors } from "@/lib/country-options";
 
 export function MapPage() {
   const { countries, places, routes, capabilityStatus } = useTravel();
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const mappedCountries = countries.filter(
     (country) => country.latitude != null && country.longitude != null,
   );
@@ -25,24 +28,52 @@ export function MapPage() {
             Deine Reise-Welt
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            In V1 nutzt JourneyOS Marker für Länder und Orte. Die Struktur ist
-            bereit für echte Länder-Polygone, Detailkarten und Routen.
+            Marker heute, Länder-Flächen später. Öffne die Karte im Vollbild,
+            suche Ziele und plane deine nächsten Orte direkt aus der Kartenansicht.
           </p>
         </div>
-        <LinkButton href="/countries/new">
-          <Plus size={17} />
-          Land hinzufügen
-        </LinkButton>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:text-slate-950"
+            onClick={() => setIsFullscreen(true)}
+            type="button"
+          >
+            <Expand size={17} />
+            Vollbild
+          </button>
+          <LinkButton href="/countries/new">
+            <Plus size={17} />
+            Land hinzufügen
+          </LinkButton>
+        </div>
       </section>
 
-      <WorldMap countries={countries} places={places} routes={routes} />
+      <section className="journey-card overflow-hidden rounded-3xl p-4">
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <TravelSearch className="max-w-xl" />
+          <button
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+            onClick={() => setIsFullscreen(true)}
+            type="button"
+          >
+            <Expand size={17} />
+            Karte groß öffnen
+          </button>
+        </div>
+        <WorldMap countries={countries} places={places} routes={routes} />
+      </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.7fr_1.3fr]">
         <article className="journey-card p-5">
-          <h2 className="text-lg font-semibold text-slate-950">Legende & Kartenstatus</h2>
+          <h2 className="text-lg font-semibold text-slate-950">
+            Legende & Kartenstatus
+          </h2>
           <div className="mt-4 space-y-3">
             {countryStatuses.map((status) => (
-              <div className="flex items-center gap-3 text-sm text-slate-600" key={status.value}>
+              <div
+                className="flex items-center gap-3 text-sm text-slate-600"
+                key={status.value}
+              >
                 <span
                   className="h-3 w-3 rounded-full"
                   style={{ backgroundColor: statusMapColors[status.value] }}
@@ -72,6 +103,31 @@ export function MapPage() {
           </div>
         </article>
       </section>
+
+      {isFullscreen ? (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 p-3 backdrop-blur-sm sm:p-5">
+          <div className="relative h-full overflow-hidden rounded-3xl border border-white/20 bg-white shadow-large">
+            <div className="absolute left-4 right-4 top-4 z-[1001] flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <TravelSearch className="max-w-xl" />
+              <button
+                aria-label="Vollbildkarte schließen"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white shadow-lg transition hover:bg-slate-800 md:w-auto"
+                onClick={() => setIsFullscreen(false)}
+                type="button"
+              >
+                <X size={18} />
+                Schließen
+              </button>
+            </div>
+            <WorldMap
+              className="h-full rounded-none border-0 shadow-none"
+              countries={countries}
+              places={places}
+              routes={routes}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

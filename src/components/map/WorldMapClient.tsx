@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { GeoJSON, MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import { StatusBadge } from "@/components/ui/Badge";
 import { placeTypeLabels, statusMapColors } from "@/lib/country-options";
+import { cn } from "@/lib/utils";
 import type { Country, Place, RoutePlan } from "@/types/country";
 
 function createMarkerIcon(country: Country) {
@@ -68,10 +69,12 @@ export default function WorldMapClient({
   countries,
   places = [],
   routes = [],
+  className,
 }: {
   countries: Country[];
   places?: Place[];
   routes?: RoutePlan[];
+  className?: string;
 }) {
   const markerCountries = countries.filter(
     (country) =>
@@ -85,7 +88,12 @@ export default function WorldMapClient({
   const drawableRoutes = routes.filter((route) => route.routeGeojson);
 
   return (
-    <div className="h-[420px] overflow-hidden rounded-3xl border border-slate-200 bg-blue-50 shadow-sm">
+    <div
+      className={cn(
+        "h-[420px] overflow-hidden rounded-3xl border border-slate-200 bg-blue-50 shadow-sm",
+        className,
+      )}
+    >
       <MapContainer
         center={[24, 12]}
         className="h-full w-full"

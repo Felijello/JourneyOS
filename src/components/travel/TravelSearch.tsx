@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { CloudSun, Loader2, Search, Sparkles } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { CalendarDays, CloudSun, Loader2, Search, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type TravelSearchResult = {
   destination?: {
     name: string;
     country?: string;
+    admin1?: string;
     latitude: number;
     longitude: number;
   };
@@ -16,6 +17,9 @@ type TravelSearchResult = {
     windSpeed?: number;
     precipitation?: number;
   };
+  description?: string;
+  bestTravelTime?: string;
+  weatherSummary?: string;
   answer?: string;
   aiAvailable?: boolean;
   error?: string;
@@ -114,7 +118,9 @@ export function TravelSearch({ className }: { className?: string }) {
                   </p>
                   <h2 className="mt-1 text-xl font-semibold text-slate-950">
                     {result.destination?.name}
-                    {result.destination?.country ? `, ${result.destination.country}` : ""}
+                    {result.destination?.country
+                      ? `, ${result.destination.country}`
+                      : ""}
                   </h2>
                 </div>
 
@@ -146,15 +152,25 @@ export function TravelSearch({ className }: { className?: string }) {
                   />
                 </div>
 
-                <div className="rounded-2xl bg-blue-50 p-4">
-                  <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-700">
-                    <Sparkles size={16} />
-                    {result.aiAvailable ? "AI Einschätzung" : "Fallback ohne AI"}
-                  </div>
-                  <p className="whitespace-pre-line text-sm leading-7 text-slate-700">
-                    {result.answer}
-                  </p>
-                </div>
+                <InsightCard
+                  icon={<Sparkles size={16} />}
+                  label={
+                    result.aiAvailable
+                      ? "AI Kurzbeschreibung"
+                      : "Kurzbeschreibung"
+                  }
+                >
+                  {result.description ?? result.answer}
+                </InsightCard>
+                <InsightCard
+                  icon={<CalendarDays size={16} />}
+                  label="Beste Reisezeit"
+                >
+                  {result.bestTravelTime}
+                </InsightCard>
+                <InsightCard icon={<CloudSun size={16} />} label="Wetter jetzt">
+                  {result.weatherSummary}
+                </InsightCard>
               </div>
             ) : (
               <p className="text-sm text-slate-500">
@@ -168,12 +184,32 @@ export function TravelSearch({ className }: { className?: string }) {
   );
 }
 
+function InsightCard({
+  children,
+  icon,
+  label,
+}: {
+  children?: ReactNode;
+  icon: ReactNode;
+  label: string;
+}) {
+  return (
+    <div className="rounded-2xl bg-blue-50 p-4">
+      <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-700">
+        {icon}
+        {label}
+      </div>
+      <p className="text-sm leading-7 text-slate-700">{children ?? "Noch keine Daten."}</p>
+    </div>
+  );
+}
+
 function Metric({
   icon,
   label,
   value,
 }: {
-  icon?: React.ReactNode;
+  icon?: ReactNode;
   label: string;
   value: string;
 }) {

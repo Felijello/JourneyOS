@@ -7,6 +7,7 @@ type SearchBody = {
 type GeoResult = {
   name: string;
   country?: string;
+  admin1?: string;
   latitude: number;
   longitude: number;
   timezone?: string;
@@ -41,85 +42,112 @@ async function getWeather(destination: GeoResult) {
   return (await response.json()) as WeatherResult;
 }
 
+function getDestinationDescription(destination: GeoResult) {
+  const name = destination.name.toLowerCase();
+  const country = destination.country?.toLowerCase() ?? "";
+
+  if (name.includes("wien") || name.includes("vienna")) {
+    return "Wien verbindet beeindruckende Geschichte, prachtvolle Architektur und modernes Stadtleben. Besucher können Schloss Schönbrunn, den Stephansdom und gemütliche Kaffeehäuser entdecken oder durch die Altstadt spazieren. Die Stadt ist ideal für Kultur, Shopping, gutes Essen und entspannte Tage an der Donau.";
+  }
+  if (country.includes("japan") || name.includes("japan")) {
+    return "Japan mischt alte Tempel, leuchtende Städte, fantastische Küche und ruhige Natur auf eine Art, die sich sofort besonders anfühlt. Zwischen Tokyo, Kyoto, Onsen-Orten und Küstenregionen kannst du sehr unterschiedliche Reisen bauen. Perfekt, wenn du Kultur, Essen, Design und kleine Alltagsmomente liebst.";
+  }
+  if (country.includes("portugal") || name.includes("portugal")) {
+    return "Portugal ist entspannt, sonnig und trotzdem voller Abwechslung. Lissabon, Porto, die Algarve und die Atlantikküste liefern schöne Städte, gutes Essen, Strände und viel Raum für Roadtrips. Das Ziel passt super, wenn du Wärme, Meer, Kultur und unkomplizierte Tage kombinieren willst.";
+  }
+  if (country.includes("france") || name.includes("paris")) {
+    return "Frankreich verbindet große Kultur, starke Küche und sehr unterschiedliche Landschaften. Von Paris über die Provence bis zur Atlantikküste kannst du Städtetrips, Roadtrips und entspannte Genussreisen planen. Besonders schön ist es, wenn du dir Zeit für Viertel, Märkte und kleine Orte nimmst.";
+  }
+  if (country.includes("italy") || name.includes("rom") || name.includes("rome")) {
+    return "Italien fühlt sich fast immer nach gutem Essen, Geschichte und schönen Wegen durch alte Städte an. Rom, Florenz, die Küsten und die Seenregionen bieten viel Abwechslung ohne kompliziert zu werden. Ideal für Kultur, Aperitivo, Architektur und entspannte Reisetage.";
+  }
+  if (name.includes("bali") || country.includes("indonesia")) {
+    return "Bali ist eine Mischung aus Reisfeldern, Stränden, Tempeln, Cafés und viel Natur. Du kannst dort ruhig reisen, aktiv unterwegs sein oder dir eine sehr entspannte Inselroutine bauen. Besonders stark ist Bali, wenn du Aussichtspunkte, gutes Essen, Yoga, Wasserfälle und Meer kombinieren willst.";
+  }
+
+  const displayName = destination.country
+    ? `${destination.name} in ${destination.country}`
+    : destination.name;
+  return `${displayName} ist ein spannendes Reiseziel für deine Liste. Du bekommst dort je nach Region eine Mischung aus lokalen Vierteln, Essen, Kultur, Aussichtspunkten und entspannten Momenten. JourneyOS kann daraus später konkrete Orte, Tagespläne, Wetterchecks und Routen bauen.`;
+}
+
 function getSeasonHint(destination: GeoResult) {
   const latitude = destination.latitude;
   const country = destination.country?.toLowerCase() ?? "";
   const name = destination.name.toLowerCase();
 
   if (country.includes("japan") || name.includes("japan")) {
-    return "meist März bis Mai oder Oktober bis November: angenehme Temperaturen, viel Stimmung, weniger schwül als im Hochsommer.";
+    return "Meist März bis Mai oder Oktober bis November: angenehme Temperaturen, viel Stimmung, weniger schwül als im Hochsommer.";
   }
   if (country.includes("portugal") || name.includes("portugal")) {
-    return "meist April bis Juni oder September bis Oktober: warm, sonnig und oft entspannter als mitten im Sommer.";
+    return "Meist April bis Juni oder September bis Oktober: warm, sonnig und oft entspannter als mitten im Sommer.";
   }
   if (country.includes("indonesia") || name.includes("bali")) {
-    return "meist Mai bis Oktober: trockenere Monate, gute Chancen auf stabile Reisetage und weniger Regenschauer.";
+    return "Meist Mai bis Oktober: trockenere Monate, gute Chancen auf stabile Reisetage und weniger Regenschauer.";
   }
   if (country.includes("thailand")) {
-    return "meist November bis Februar: trockener, nicht ganz so schwül und sehr angenehm für Inseln und Städte.";
+    return "Meist November bis Februar: trockener, nicht ganz so schwül und sehr angenehm für Inseln und Städte.";
   }
   if (country.includes("canada")) {
-    return "meist Juni bis September: gute Bedingungen für Roadtrips, Seen, Nationalparks und längere Tage.";
+    return "Meist Juni bis September: gute Bedingungen für Roadtrips, Seen, Nationalparks und längere Tage.";
   }
   if (latitude > 35) {
-    return "oft Mai bis Juni oder September bis Oktober: mild, gut planbar und meistens entspannter als die Hochsaison.";
+    return "Oft Mai bis Juni oder September bis Oktober: mild, gut planbar und meistens entspannter als die Hochsaison.";
   }
   if (latitude < -25) {
-    return "oft Oktober bis April: auf der Südhalbkugel sind das die wärmeren Monate, je nach Region aber sehr unterschiedlich.";
+    return "Oft Oktober bis April: auf der Südhalbkugel sind das die wärmeren Monate, je nach Region aber sehr unterschiedlich.";
   }
   if (Math.abs(latitude) < 23.5) {
-    return "oft in der trockeneren Saison am angenehmsten. Für Tropenziele lohnt sich vor der Buchung ein kurzer Regenzeit-Check.";
+    return "Oft in der trockeneren Saison am angenehmsten. Für Tropenziele lohnt sich vor der Buchung ein kurzer Regenzeit-Check.";
   }
-  return "meist Frühling oder Herbst: oft angenehmes Wetter, weniger Extreme und gute Bedingungen zum Erkunden.";
+  return "Meist Frühling oder Herbst: oft angenehmes Wetter, weniger Extreme und gute Bedingungen zum Erkunden.";
 }
 
-async function generateTravelAnswer({
+async function generateDescription({
   destination,
   query,
-  weather,
 }: {
   destination: GeoResult;
   query: string;
-  weather: WeatherResult;
 }) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
-  const temperature = weather.current?.temperature_2m;
-  const wind = weather.current?.wind_speed_10m;
-  const precipitation = weather.current?.precipitation;
   const prompt = [
-    "Antworte locker, hilfreich und auf Deutsch wie ein Travel Buddy.",
-    "Gib eine kurze Beschreibung und die optimale Reisezeit.",
-    "Nutze keine erfundenen privaten Details.",
+    "Schreibe auf Deutsch in einem lockeren, hilfreichen Travel-Buddy-Ton.",
+    "Erstelle nur eine kurze Reisezielbeschreibung mit 3 Sätzen.",
+    "Nenne konkrete Highlights, aber keine erfundenen privaten Details.",
+    "Nicht wie ein Reisebüro klingen. Keine Überschrift.",
     `Suchanfrage: ${query}`,
     `Gefundenes Ziel: ${destination.name}, ${destination.country ?? "Land unbekannt"}`,
-    `Aktuelles Open-Meteo Wetter: Temperatur ${temperature ?? "unbekannt"}°C, Wind ${
-      wind ?? "unbekannt"
-    } km/h, Niederschlag ${precipitation ?? "unbekannt"} mm.`,
-    "Format: 2 kurze Absätze mit Überschriften 'Kurzbeschreibung' und 'Beste Reisezeit'.",
   ].join("\n");
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-      }),
-    },
-  );
+  for (const model of ["gemini-2.0-flash", "gemini-1.5-flash"]) {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+        }),
+      },
+    );
 
-  if (!response.ok) return null;
+    if (!response.ok) continue;
 
-  const data = await response.json();
-  return (
-    data?.candidates?.[0]?.content?.parts
-      ?.map((part: { text?: string }) => part.text)
-      .filter(Boolean)
-      .join("\n") ?? null
-  );
+    const data = await response.json();
+    const text =
+      data?.candidates?.[0]?.content?.parts
+        ?.map((part: { text?: string }) => part.text)
+        .filter(Boolean)
+        .join("\n")
+        ?.trim() ?? null;
+
+    if (text) return text;
+  }
+
+  return null;
 }
 
 export async function POST(request: Request) {
@@ -136,15 +164,19 @@ export async function POST(request: Request) {
   try {
     const destination = await geocodeDestination(query);
     const weather = await getWeather(destination);
-    const aiAnswer = await generateTravelAnswer({ destination, query, weather });
+    const aiDescription = await generateDescription({ destination, query });
     const temperature = weather.current?.temperature_2m;
     const wind = weather.current?.wind_speed_10m;
     const precipitation = weather.current?.precipitation;
+    const description = aiDescription ?? getDestinationDescription(destination);
+    const bestTravelTime = getSeasonHint(destination);
+    const weatherSummary = `Aktuell meldet Open-Meteo ${temperature ?? "?"}°C, ${wind ?? "?"} km/h Wind und ${precipitation ?? "?"} mm Regen.`;
 
     return NextResponse.json({
       destination: {
         name: destination.name,
         country: destination.country,
+        admin1: destination.admin1,
         latitude: destination.latitude,
         longitude: destination.longitude,
         timezone: destination.timezone,
@@ -154,10 +186,11 @@ export async function POST(request: Request) {
         windSpeed: wind,
         precipitation,
       },
-      answer:
-        aiAnswer ??
-        `Kurzbeschreibung\n${destination.name} wirkt wie ein spannendes Ziel für deine Liste. JourneyOS hat das Ziel gefunden und nutzt Open-Meteo direkt für den aktuellen Wettercheck.\n\nBeste Reisezeit\nGrobe Einschätzung: ${getSeasonHint(destination)} Aktuell meldet Open-Meteo ${temperature ?? "?"}°C, ${wind ?? "?"} km/h Wind und ${precipitation ?? "?"} mm Regen. Für eine Buchung würde ich später noch Monatsklima und deine konkreten Reisedaten gegenchecken.`,
-      aiAvailable: Boolean(aiAnswer),
+      description,
+      bestTravelTime,
+      weatherSummary,
+      answer: `Kurzbeschreibung\n${description}\n\nBeste Reisezeit\n${bestTravelTime}\n\nWetter\n${weatherSummary}`,
+      aiAvailable: Boolean(aiDescription),
     });
   } catch (error) {
     return NextResponse.json(

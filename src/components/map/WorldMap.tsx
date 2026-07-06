@@ -16,10 +16,19 @@ export function WorldMap({
   countries,
   places = [],
   routes = [],
+  className,
 }: {
   countries: Country[];
   places?: Place[];
   routes?: RoutePlan[];
+  className?: string;
 }) {
-  return <LeafletWorldMap countries={countries} places={places} routes={routes} />;
+  return (
+    <LeafletWorldMap
+      className={className}
+      countries={countries}
+      places={places}
+      routes={routes}
+    />
+  );
 }
