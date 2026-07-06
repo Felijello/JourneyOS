@@ -37,10 +37,10 @@ function DataSourcePill() {
       ? "Supabase aktiv"
       : capabilityStatus.supabase
         ? supabaseStatus.authStatus === "error"
-          ? "Supabase prüfen"
+          ? "Auth prüfen"
           : supabaseStatus.authenticated
-          ? "Supabase prüfen"
-          : "Login nötig"
+          ? "Supabase lädt"
+          : "Magic Link nötig"
         : "Demo-Modus";
   const tone =
     dataSource === "supabase"

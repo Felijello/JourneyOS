@@ -5,7 +5,6 @@ import { Expand, MapPinned, Plus, X } from "lucide-react";
 import { CountryCard } from "@/components/countries/CountryCard";
 import { WorldMap } from "@/components/map/WorldMap";
 import { useTravel } from "@/components/providers/CountryProvider";
-import { TravelSearch } from "@/components/travel/TravelSearch";
 import { LinkButton } from "@/components/ui/Button";
 import { countryStatuses, statusMapColors } from "@/lib/country-options";
 
@@ -28,8 +27,8 @@ export function MapPage() {
             Deine Reise-Welt
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Marker heute, Länder-Flächen später. Öffne die Karte im Vollbild,
-            suche Ziele und plane deine nächsten Orte direkt aus der Kartenansicht.
+            Länder werden nach Status eingefärbt. Orte und Städte kannst du wie
+            bei einer Karten-App suchen und direkt hineinzoomen.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -50,7 +49,9 @@ export function MapPage() {
 
       <section className="journey-card overflow-hidden rounded-3xl p-4">
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <TravelSearch className="max-w-xl" />
+          <p className="text-sm font-medium text-slate-600">
+            Ortssuche ist direkt in der Karte oben rechts.
+          </p>
           <button
             className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
             onClick={() => setIsFullscreen(true)}
@@ -60,7 +61,12 @@ export function MapPage() {
             Karte groß öffnen
           </button>
         </div>
-        <WorldMap countries={countries} places={places} routes={routes} />
+        <WorldMap
+          countries={countries}
+          places={places}
+          routes={routes}
+          showPlaceSearch
+        />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.7fr_1.3fr]">
@@ -107,23 +113,21 @@ export function MapPage() {
       {isFullscreen ? (
         <div className="fixed inset-0 z-50 bg-slate-950/60 p-3 backdrop-blur-sm sm:p-5">
           <div className="relative h-full overflow-hidden rounded-3xl border border-white/20 bg-white shadow-large">
-            <div className="absolute left-4 right-4 top-4 z-[1001] flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <TravelSearch className="max-w-xl" />
-              <button
-                aria-label="Vollbildkarte schließen"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white shadow-lg transition hover:bg-slate-800 md:w-auto"
-                onClick={() => setIsFullscreen(false)}
-                type="button"
-              >
-                <X size={18} />
-                Schließen
-              </button>
-            </div>
+            <button
+              aria-label="Vollbildkarte schließen"
+              className="absolute bottom-4 right-4 z-[1001] inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white shadow-lg transition hover:bg-slate-800"
+              onClick={() => setIsFullscreen(false)}
+              type="button"
+            >
+              <X size={18} />
+              Schließen
+            </button>
             <WorldMap
               className="h-full rounded-none border-0 shadow-none"
               countries={countries}
               places={places}
               routes={routes}
+              showPlaceSearch
             />
           </div>
         </div>

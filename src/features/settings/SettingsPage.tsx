@@ -55,7 +55,7 @@ export function SettingsPage() {
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
           Hier siehst du, welche Integrationen bereit sind. Supabase kann
           korrekt konfiguriert sein, auch wenn private Daten erst nach deinem
-          Login geladen werden.
+          Magic-Link-Zugang geladen werden.
         </p>
       </div>
 
@@ -68,7 +68,7 @@ export function SettingsPage() {
               : supabaseAuthError
                 ? "Supabase Env Vars sind gesetzt, aber Auth konnte nicht geprüft werden. Prüfe URL, Anon Key und die Supabase Auth Settings."
               : supabaseReady
-                ? "Supabase Env Vars sind gesetzt. Melde dich per Magic Link an, dann lädt JourneyOS deine privaten Tabellen."
+                ? "Supabase Env Vars sind gesetzt. Öffne den Magic Link, dann lädt JourneyOS deine privaten Tabellen."
                 : "Supabase Env Vars fehlen. JourneyOS läuft deshalb nur lokal."
           }
           icon={<Database size={22} />}
@@ -86,11 +86,11 @@ export function SettingsPage() {
             supabaseConnected
               ? "Storage ist bereit, sofern der Bucket travel-photos und die Policies aus schema.sql existieren."
               : supabaseReady
-                ? "Storage ist vorbereitet. Foto-Uploads starten nach Login und mit Bucket travel-photos."
+                ? "Storage ist vorbereitet. Foto-Uploads starten nach Magic Link und mit Bucket travel-photos."
                 : "Storage braucht Supabase Env Vars und den Bucket travel-photos."
           }
           icon={<HardDrive size={22} />}
-          title={supabaseConnected ? "Storage vorbereitet" : "Storage bereit nach Login"}
+          title={supabaseConnected ? "Storage vorbereitet" : "Storage bereit nach Magic Link"}
         />
         <StatusCard
           active

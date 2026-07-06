@@ -17,11 +17,13 @@ export function WorldMap({
   places = [],
   routes = [],
   className,
+  showPlaceSearch = false,
 }: {
   countries: Country[];
   places?: Place[];
   routes?: RoutePlan[];
   className?: string;
+  showPlaceSearch?: boolean;
 }) {
   return (
     <LeafletWorldMap
@@ -29,6 +31,7 @@ export function WorldMap({
       countries={countries}
       places={places}
       routes={routes}
+      showPlaceSearch={showPlaceSearch}
     />
   );
 }

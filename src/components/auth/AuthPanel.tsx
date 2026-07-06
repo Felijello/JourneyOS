@@ -2,10 +2,15 @@
 
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { useTravel } from "@/components/providers/CountryProvider";
 import { Button } from "@/components/ui/Button";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase/client";
 
+const productionSiteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://journey-os-wine.vercel.app";
+
 export function AuthPanel() {
+  const { enableDemoMode } = useTravel();
   const [email, setEmail] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -16,7 +21,9 @@ export function AuthPanel() {
       return;
     }
 
-    void supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    void supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
+    });
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -34,10 +41,7 @@ export function AuthPanel() {
 
     setIsSubmitting(true);
     setMessage(null);
-    const redirectTo =
-      typeof window !== "undefined"
-        ? new URL("/auth/callback", window.location.origin).toString()
-        : undefined;
+    const redirectTo = new URL("/auth/callback", productionSiteUrl).toString();
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
@@ -48,7 +52,7 @@ export function AuthPanel() {
     setMessage(
       error
         ? error.message
-        : "Magic Link wurde verschickt. Der Link führt auf die Domain zurück, auf der du ihn angefordert hast.",
+        : "Magic Link wurde verschickt. Der Link führt zur Vercel-App zurück.",
     );
   }
 
@@ -103,6 +107,16 @@ export function AuthPanel() {
           </label>
           <Button disabled={isSubmitting} type="submit">
             {isSubmitting ? "Sende..." : "Magic Link senden"}
+          </Button>
+          <Button
+            onClick={() => {
+              enableDemoMode();
+              setMessage("Demo-Ansicht ist aktiv. Du kannst JourneyOS sofort testen.");
+            }}
+            type="button"
+            variant="secondary"
+          >
+            Demo ansehen
           </Button>
         </form>
       )}

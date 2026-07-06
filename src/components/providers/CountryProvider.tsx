@@ -112,6 +112,7 @@ type TravelContextValue = TravelState & {
   createAiGeneration: (
     input: Omit<AiGeneration, "id" | "createdAt">,
   ) => Promise<AiGeneration>;
+  enableDemoMode: () => void;
   refreshCountries: () => Promise<void>;
 };
 
@@ -276,11 +277,11 @@ export function CountryProvider({ children }: { children: ReactNode }) {
     }
 
     const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
 
-    if (authError) {
+    if (sessionError) {
       setState(localState);
       setDataSource("local");
       setSupabaseAuthStatus("error");
@@ -289,7 +290,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (!user) {
+    if (!session?.user) {
       setState(localState);
       setDataSource("local");
       setSupabaseAuthStatus("signed_out");
@@ -346,7 +347,6 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       aiGenerationsResult.error;
 
     if (requestError) {
-      setError(`${requestError.message} · Lokaler Demo-Modus bleibt aktiv.`);
       setState(localState);
       setDataSource("local");
       setError(
@@ -370,6 +370,14 @@ export function CountryProvider({ children }: { children: ReactNode }) {
     }
 
     setIsLoading(false);
+  }, []);
+
+  const enableDemoMode = useCallback(() => {
+    writeLocalState(seedTravelState);
+    setState(seedTravelState);
+    setDataSource("local");
+    setError(null);
+    setSupabaseAuthStatus(isSupabaseConfigured ? "signed_out" : "unconfigured");
   }, []);
 
   useEffect(() => {
@@ -1022,6 +1030,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       createPhoto,
       createRoute,
       createAiGeneration,
+      enableDemoMode,
       refreshCountries,
     }),
     [
@@ -1053,6 +1062,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       createPhoto,
       createRoute,
       createAiGeneration,
+      enableDemoMode,
       refreshCountries,
     ],
   );

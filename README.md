@@ -43,6 +43,7 @@ Kopiere `.env.example` nach `.env.local` und fülle lokal echte Werte ein:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SITE_URL=https://journey-os-wine.vercel.app
 OPENROUTESERVICE_API_KEY=
 NEXT_PUBLIC_MAPTILER_KEY=
 GEMINI_API_KEY=
@@ -62,8 +63,8 @@ Sicherheit:
 3. Den kompletten Inhalt von `supabase/schema.sql` ausführen.
 4. Authentication -> Providers -> Email aktivieren.
 5. Redirect URLs setzen:
-   - `http://localhost:3000`
-   - deine Vercel-Domain
+   - `https://journey-os-wine.vercel.app/auth/callback`
+   - `http://localhost:3000/auth/callback` optional für lokale Entwicklung
 6. `.env.local` mit Supabase URL und Anon/Publishable Key füllen.
 7. App neu starten und unter Einstellungen anmelden.
 
@@ -150,6 +151,7 @@ In Vercel Project Settings -> Environment Variables setzen:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SITE_URL`
 - `OPENROUTESERVICE_API_KEY`
 - `NEXT_PUBLIC_MAPTILER_KEY`
 - `GEMINI_API_KEY`
