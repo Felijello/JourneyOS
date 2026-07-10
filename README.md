@@ -61,12 +61,16 @@ Sicherheit:
 1. Supabase-Projekt öffnen.
 2. SQL Editor öffnen.
 3. Den kompletten Inhalt von `supabase/schema.sql` ausführen.
-4. Authentication -> Providers -> Email aktivieren.
-5. Redirect URLs setzen:
+4. Danach `supabase/migrations/20260710_harden_auth_rls.sql` ausführen.
+5. Authentication -> Providers -> Email und Passwort aktivieren.
+6. Authentication -> URL Configuration setzen:
+   - Site URL: `https://journey-os-wine.vercel.app`
+   - Redirect URL: `https://journey-os-wine.vercel.app/auth/callback`
+7. Redirect URLs setzen:
    - `https://journey-os-wine.vercel.app/auth/callback`
    - `http://localhost:3000/auth/callback` optional für lokale Entwicklung
-6. `.env.local` mit Supabase URL und Anon/Publishable Key füllen.
-7. App neu starten und unter Einstellungen anmelden.
+8. `.env.local` mit Supabase URL und Anon/Publishable Key füllen.
+9. App neu starten und unter `/login` anmelden oder registrieren.
 
 Das Schema erstellt:
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fetchWithTimeout, isRateLimited, readJsonBody } from "@/lib/server/request-guard";
 
 type SearchBody = {
   query?: string;
@@ -22,7 +23,7 @@ type WeatherResult = {
 };
 
 async function geocodeDestination(query: string) {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
       query,
     )}&count=1&language=de&format=json`,
@@ -35,7 +36,7 @@ async function geocodeDestination(query: string) {
 }
 
 async function getWeather(destination: GeoResult) {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `https://api.open-meteo.com/v1/forecast?latitude=${destination.latitude}&longitude=${destination.longitude}&current=temperature_2m,wind_speed_10m,precipitation&timezone=auto`,
   );
   if (!response.ok) throw new Error("Wetterdaten sind gerade nicht erreichbar.");
@@ -123,7 +124,7 @@ async function generateDescription({
   ].join("\n");
 
   for (const model of ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]) {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
         method: "POST",
@@ -151,12 +152,20 @@ async function generateDescription({
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => null)) as SearchBody | null;
+  if (isRateLimited(request, "travel-search", 10)) {
+    return NextResponse.json(
+      { error: "Zu viele Suchanfragen. Bitte warte kurz." },
+      { status: 429 },
+    );
+  }
+
+  const parsed = await readJsonBody<SearchBody>(request, 1_000);
+  const body = parsed.data;
   const query = body?.query?.trim();
 
-  if (!query) {
+  if (parsed.error || !query || query.length > 120) {
     return NextResponse.json(
-      { error: "Bitte gib ein Reiseziel ein." },
+      { error: parsed.error ?? "Bitte gib ein gültiges Reiseziel ein." },
       { status: 400 },
     );
   }

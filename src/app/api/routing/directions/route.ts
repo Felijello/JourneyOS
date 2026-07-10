@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { RouteCoordinate } from "@/lib/services/routing";
+import { fetchWithTimeout, isRateLimited, readJsonBody } from "@/lib/server/request-guard";
 
 type DirectionsRequest = {
   coordinates?: RouteCoordinate[];
@@ -11,29 +12,10 @@ const allowedProfiles = new Set([
   "foot-walking",
   "cycling-regular",
 ]);
-const rateLimitWindowMs = 60_000;
-const maxRequestsPerWindow = 12;
-const requestCounts = new Map<string, { count: number; resetAt: number }>();
-
-function isRateLimited(request: Request) {
-  const forwardedFor = request.headers.get("x-forwarded-for") ?? "local";
-  const key = forwardedFor.split(",")[0]?.trim() || "local";
-  const now = Date.now();
-  const current = requestCounts.get(key);
-
-  if (!current || current.resetAt < now) {
-    requestCounts.set(key, { count: 1, resetAt: now + rateLimitWindowMs });
-    return false;
-  }
-
-  current.count += 1;
-  return current.count > maxRequestsPerWindow;
-}
-
 export async function POST(request: Request) {
   const apiKey = process.env.OPENROUTESERVICE_API_KEY;
 
-  if (isRateLimited(request)) {
+  if (isRateLimited(request, "routing", 12)) {
     return NextResponse.json(
       { error: "Zu viele Routing-Anfragen. Versuch es gleich nochmal." },
       { status: 429 },
@@ -47,7 +29,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = (await request.json()) as DirectionsRequest;
+  const parsed = await readJsonBody<DirectionsRequest>(request);
+  if (parsed.error || !parsed.data) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+  const body = parsed.data;
   const coordinates = body.coordinates ?? [];
   const profile = body.profile ?? "driving-car";
 
@@ -60,12 +46,15 @@ export async function POST(request: Request) {
 
   if (
     coordinates.length < 2 ||
+    coordinates.length > 25 ||
     coordinates.some(
       (coordinate) =>
         !Array.isArray(coordinate) ||
         coordinate.length !== 2 ||
         !Number.isFinite(coordinate[0]) ||
-        !Number.isFinite(coordinate[1]),
+        !Number.isFinite(coordinate[1]) ||
+        Math.abs(coordinate[0]) > 180 ||
+        Math.abs(coordinate[1]) > 90,
     )
   ) {
     return NextResponse.json(
@@ -74,11 +63,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
-
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://api.openrouteservice.org/v2/directions/${profile}/geojson`,
       {
         method: "POST",
@@ -87,15 +73,15 @@ export async function POST(request: Request) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ coordinates }),
-        signal: controller.signal,
       },
+      15_000,
     );
 
     const data = (await response.json()) as unknown;
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: "OpenRouteService konnte keine Route berechnen.", details: data },
+        { error: "OpenRouteService konnte keine Route berechnen." },
         { status: response.status },
       );
     }
@@ -106,7 +92,5 @@ export async function POST(request: Request) {
       { error: "Routing dauert gerade zu lange oder ist nicht erreichbar." },
       { status: 504 },
     );
-  } finally {
-    clearTimeout(timeout);
   }
 }
