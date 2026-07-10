@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bell,
   CalendarDays,
   Compass,
   Globe2,
@@ -183,13 +182,6 @@ function TopBar() {
 
         <div className="flex items-center gap-2">
           <DataSourcePill />
-          <button
-            className="hidden size-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:text-slate-950 sm:flex"
-            title="Benachrichtigungen"
-            type="button"
-          >
-            <Bell aria-hidden="true" size={18} />
-          </button>
           <LinkButton className="rounded-2xl" href="/countries/new">
             <Plus aria-hidden="true" size={17} />
             Land

@@ -34,6 +34,8 @@ export function TripDayPlanner({ trip }: { trip: Trip }) {
   } = useTravel();
   const [itemTitleByDay, setItemTitleByDay] = useState<Record<string, string>>({});
   const [itemTypeByDay, setItemTypeByDay] = useState<Record<string, TripDayItemType>>({});
+  const [operationError, setOperationError] = useState<string | null>(null);
+  const [isWorking, setIsWorking] = useState(false);
 
   const days = useMemo(
     () =>
@@ -43,34 +45,59 @@ export function TripDayPlanner({ trip }: { trip: Trip }) {
     [tripDays, trip.id],
   );
 
-  function handleAddDay() {
+  async function handleAddDay() {
     const dayNumber = days.length + 1;
-    createTripDay({
-      tripId: trip.id,
-      userId: null,
-      dayNumber,
-      date: dateForDay(trip.startDate, dayNumber),
-      title: `Tag ${dayNumber}`,
-      planText: "",
-    });
+    setOperationError(null);
+    setIsWorking(true);
+    try {
+      await createTripDay({
+        tripId: trip.id,
+        userId: null,
+        dayNumber,
+        date: dateForDay(trip.startDate, dayNumber),
+        title: `Tag ${dayNumber}`,
+        planText: "",
+      });
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Der Reisetag konnte nicht angelegt werden.");
+    } finally {
+      setIsWorking(false);
+    }
   }
 
-  function handleAddItem(dayId: string) {
+  async function handleAddItem(dayId: string) {
     const title = itemTitleByDay[dayId]?.trim();
     if (!title) return;
     const existingCount = tripDayItems.filter((item) => item.tripDayId === dayId).length;
-    createTripDayItem({
-      userId: null,
-      tripDayId: dayId,
-      placeId: null,
-      title,
-      type: itemTypeByDay[dayId] ?? "activity",
-      startTime: null,
-      endTime: null,
-      notes: "",
-      sortOrder: existingCount + 1,
-    });
-    setItemTitleByDay((current) => ({ ...current, [dayId]: "" }));
+    setOperationError(null);
+    setIsWorking(true);
+    try {
+      await createTripDayItem({
+        userId: null,
+        tripDayId: dayId,
+        placeId: null,
+        title,
+        type: itemTypeByDay[dayId] ?? "activity",
+        startTime: null,
+        endTime: null,
+        notes: "",
+        sortOrder: existingCount + 1,
+      });
+      setItemTitleByDay((current) => ({ ...current, [dayId]: "" }));
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Der Tagespunkt konnte nicht gespeichert werden.");
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
+  async function saveDay(id: string, input: { title?: string; planText?: string }) {
+    try {
+      await updateTripDay(id, input);
+      setOperationError(null);
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : "Der Reisetag konnte nicht gespeichert werden.");
+    }
   }
 
   return (
@@ -84,11 +111,17 @@ export function TripDayPlanner({ trip }: { trip: Trip }) {
             Reise Tag für Tag bauen
           </h2>
         </div>
-        <Button className="rounded-2xl" onClick={handleAddDay} type="button" variant="secondary">
+        <Button className="rounded-2xl" disabled={isWorking} onClick={handleAddDay} type="button" variant="secondary">
           <CalendarPlus size={16} />
           Tag hinzufügen
         </Button>
       </div>
+
+      {operationError ? (
+        <p className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+          {operationError}
+        </p>
+      ) : null}
 
       <div className="mt-5 space-y-4">
         {days.length ? (
@@ -112,18 +145,16 @@ export function TripDayPlanner({ trip }: { trip: Trip }) {
                   <div className="space-y-3">
                     <input
                       className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                      onChange={(event) =>
-                        updateTripDay(day.id, { title: event.target.value })
-                      }
-                      value={day.title}
+                      defaultValue={day.title}
+                      maxLength={120}
+                      onBlur={(event) => void saveDay(day.id, { title: event.target.value.trim() })}
                     />
                     <textarea
                       className="min-h-24 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-6 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                      onChange={(event) =>
-                        updateTripDay(day.id, { planText: event.target.value })
-                      }
+                      defaultValue={day.planText}
+                      maxLength={4000}
+                      onBlur={(event) => void saveDay(day.id, { planText: event.target.value.trim() })}
                       placeholder="Was soll an diesem Tag passieren?"
-                      value={day.planText}
                     />
                   </div>
                 </div>
@@ -146,7 +177,14 @@ export function TripDayPlanner({ trip }: { trip: Trip }) {
                       <button
                         aria-label="Tagespunkt löschen"
                         className="rounded-full p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
-                        onClick={() => deleteTripDayItem(item.id)}
+                        onClick={async () => {
+                          try {
+                            await deleteTripDayItem(item.id);
+                            setOperationError(null);
+                          } catch (error) {
+                            setOperationError(error instanceof Error ? error.message : "Der Tagespunkt konnte nicht gelöscht werden.");
+                          }
+                        }}
                         type="button"
                       >
                         <Trash2 size={15} />
@@ -185,6 +223,7 @@ export function TripDayPlanner({ trip }: { trip: Trip }) {
                   </select>
                   <Button
                     className="h-11 rounded-2xl"
+                    disabled={isWorking}
                     onClick={() => handleAddItem(day.id)}
                     type="button"
                   >
