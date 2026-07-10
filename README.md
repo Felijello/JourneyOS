@@ -64,8 +64,8 @@ Sicherheit:
 4. Danach die Dateien in `supabase/migrations` in zeitlicher Reihenfolge ausführen.
 5. Authentication -> Providers -> Email und Passwort aktivieren.
 6. Authentication -> URL Configuration setzen:
-   - Site URL: `https://journey-os-wine.vercel.app`
-   - Redirect URL: `https://journey-os-wine.vercel.app/auth/callback`
+     - Site URL: `https://journey-os-wine.vercel.app`
+     - Redirect URL: `https://journey-os-wine.vercel.app/**`
 7. Redirect URLs setzen:
    - `https://journey-os-wine.vercel.app/auth/callback`
    - `https://journey-os-wine.vercel.app/reset-password`
@@ -73,6 +73,10 @@ Sicherheit:
    - `http://localhost:3000/reset-password` optional für lokale Entwicklung
 8. `.env.local` mit Supabase URL und Anon/Publishable Key füllen.
 9. App neu starten und unter `/login` anmelden oder registrieren.
+
+Unter Authentication -> Emails müssen die Buttons der Templates "Confirm signup"
+und "Reset password" auf `{{ .ConfirmationURL }}` zeigen. Ein direkter Link auf
+`{{ .SiteURL }}` bestätigt zwar den Token, ignoriert aber den gewünschten Callback.
 
 Das Schema erstellt:
 

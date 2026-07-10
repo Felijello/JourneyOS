@@ -20,10 +20,28 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     if (!supabase) return;
 
-    void supabase.auth.getSession().then(({ data }) => {
+    async function prepareRecovery() {
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+
+      if (window.location.hash) {
+        window.history.replaceState(null, "", "/reset-password");
+      }
+
+      if (accessToken && refreshToken) {
+        await supabase?.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+      }
+
+      const { data } = await supabase!.auth.getSession();
       setHasSession(Boolean(data.session));
       setIsChecking(false);
-    });
+    }
+
+    void prepareRecovery();
 
     const {
       data: { subscription },

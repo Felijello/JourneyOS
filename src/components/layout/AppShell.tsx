@@ -214,6 +214,16 @@ function ShellContent({ children }: { children: ReactNode }) {
   const hasAccess = isDemoMode || supabaseStatus.authenticated;
 
   useEffect(() => {
+    if (
+      !isAuthRoute &&
+      window.location.hash &&
+      (window.location.hash.includes("access_token=") ||
+        window.location.hash.includes("error_description="))
+    ) {
+      window.location.replace(`/auth/callback${window.location.hash}`);
+      return;
+    }
+
     if (!isLoading && !isAuthRoute && !hasAccess) {
       router.replace("/login");
     }
