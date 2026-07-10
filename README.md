@@ -61,14 +61,16 @@ Sicherheit:
 1. Supabase-Projekt öffnen.
 2. SQL Editor öffnen.
 3. Den kompletten Inhalt von `supabase/schema.sql` ausführen.
-4. Danach `supabase/migrations/20260710_harden_auth_rls.sql` ausführen.
+4. Danach die Dateien in `supabase/migrations` in zeitlicher Reihenfolge ausführen.
 5. Authentication -> Providers -> Email und Passwort aktivieren.
 6. Authentication -> URL Configuration setzen:
    - Site URL: `https://journey-os-wine.vercel.app`
    - Redirect URL: `https://journey-os-wine.vercel.app/auth/callback`
 7. Redirect URLs setzen:
    - `https://journey-os-wine.vercel.app/auth/callback`
+   - `https://journey-os-wine.vercel.app/reset-password`
    - `http://localhost:3000/auth/callback` optional für lokale Entwicklung
+   - `http://localhost:3000/reset-password` optional für lokale Entwicklung
 8. `.env.local` mit Supabase URL und Anon/Publishable Key füllen.
 9. App neu starten und unter `/login` anmelden oder registrieren.
 
@@ -173,6 +175,8 @@ Danach Production neu deployen.
 - Routing fehlt: `OPENROUTESERVICE_API_KEY` serverseitig setzen und neu deployen.
 - Karte lädt ohne MapTiler: `NEXT_PUBLIC_MAPTILER_KEY` setzen oder OSM-Fallback nutzen.
 - Auth Redirect klappt nicht: Supabase Redirect URL auf lokale und Vercel-Domain setzen.
+- Registrierungsmail fehlt: Spam prüfen, im Login `Bestätigung erneut senden` nutzen und unter Supabase Authentication -> Logs nachsehen. Bei bestehenden Konten stattdessen `Passwort vergessen?` verwenden.
+- Für zuverlässige Produktionsmails unter Authentication -> SMTP Settings einen eigenen Mail-Anbieter konfigurieren.
 
 ## Manual Test Checklist
 

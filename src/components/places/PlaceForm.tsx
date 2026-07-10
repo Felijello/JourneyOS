@@ -1,9 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown, MapPin, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { placeTypes, visibilityOptions } from "@/lib/country-options";
 import type { CountryVisibility, PlaceFormInput, PlaceType } from "@/types/country";
+
+const fieldClass =
+  "h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100";
 
 export function PlaceForm({
   countryId,
@@ -30,7 +34,7 @@ export function PlaceForm({
     const normalizedLongitude = longitude ? Number(longitude) : null;
 
     if (!normalizedName) {
-      setError("Bitte gib dem Ort einen Namen.");
+      setError("Wie heißt der Ort?");
       return;
     }
     if (normalizedName.length > 120) {
@@ -52,7 +56,7 @@ export function PlaceForm({
       return;
     }
     if ((normalizedLatitude == null) !== (normalizedLongitude == null)) {
-      setError("Bitte gib Breitengrad und Längengrad gemeinsam ein.");
+      setError("Bitte gib beide Koordinaten gemeinsam ein.");
       return;
     }
 
@@ -87,22 +91,17 @@ export function PlaceForm({
     }
   }
 
-  const fieldClass =
-    "h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100";
-
   return (
-    <form
-      className="space-y-3 rounded-3xl border border-dashed border-blue-200 bg-blue-50/50 p-4"
-      onSubmit={handleSubmit}
-    >
+    <form className="space-y-4 rounded-lg border border-blue-200 bg-blue-50/50 p-4" onSubmit={handleSubmit}>
       {error ? (
-        <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-          {error}
-        </p>
+        <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</p>
       ) : null}
-      <div className="grid gap-3 md:grid-cols-[1fr_170px_110px_150px]">
-        <label className="space-y-1">
-          <span className="text-xs font-semibold text-slate-600">Ort</span>
+
+      <div className="grid gap-3 sm:grid-cols-[1fr_170px]">
+        <label className="block">
+          <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+            <MapPin aria-hidden="true" size={14} /> Ort
+          </span>
           <input
             className={fieldClass}
             maxLength={120}
@@ -112,50 +111,63 @@ export function PlaceForm({
             value={name}
           />
         </label>
-        <label className="space-y-1">
-          <span className="text-xs font-semibold text-slate-600">Typ</span>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-semibold text-slate-600">Typ</span>
           <select className={fieldClass} onChange={(event) => setType(event.target.value as PlaceType)} value={type}>
             {placeTypes.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
         </label>
-        <label className="space-y-1">
-          <span className="text-xs font-semibold text-slate-600">Bewertung</span>
-          <input className={fieldClass} max={10} min={1} onChange={(event) => setRating(Number(event.target.value))} type="number" value={rating} />
-        </label>
-        <label className="space-y-1">
-          <span className="text-xs font-semibold text-slate-600">Sichtbarkeit</span>
-          <select className={fieldClass} onChange={(event) => setVisibility(event.target.value as CountryVisibility)} value={visibility}>
-            {visibilityOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <label className="space-y-1">
-          <span className="text-xs font-semibold text-slate-600">Adresse optional</span>
-          <input className={fieldClass} onChange={(event) => setAddress(event.target.value)} placeholder="Straße, Stadt, Land" value={address} />
-        </label>
-        <label className="space-y-1">
-          <span className="text-xs font-semibold text-slate-600">Kurze Notiz</span>
-          <input className={fieldClass} onChange={(event) => setShortNote(event.target.value)} placeholder="Was möchtest du dort machen?" value={shortNote} />
-        </label>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-        <label className="space-y-1">
-          <span className="text-xs font-semibold text-slate-600">Breitengrad optional</span>
-          <input className={fieldClass} max={90} min={-90} onChange={(event) => setLatitude(event.target.value)} placeholder="35.6762" step="any" type="number" value={latitude} />
-        </label>
-        <label className="space-y-1">
-          <span className="text-xs font-semibold text-slate-600">Längengrad optional</span>
-          <input className={fieldClass} max={180} min={-180} onChange={(event) => setLongitude(event.target.value)} placeholder="139.6503" step="any" type="number" value={longitude} />
-        </label>
-        <Button className="self-end rounded-xl" disabled={isSaving} type="submit">
-          {isSaving ? "Speichere..." : "Ort speichern"}
-        </Button>
-      </div>
+
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-semibold text-slate-600">Kurze Notiz</span>
+        <input
+          className={fieldClass}
+          onChange={(event) => setShortNote(event.target.value)}
+          placeholder="Warum willst du hierhin?"
+          value={shortNote}
+        />
+      </label>
+
+      <details className="group rounded-lg border border-blue-100 bg-white/70">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 text-xs font-semibold text-slate-600">
+          Adresse, Bewertung & Koordinaten
+          <ChevronDown aria-hidden="true" className="transition group-open:rotate-180" size={16} />
+        </summary>
+        <div className="grid gap-3 border-t border-blue-100 p-3 sm:grid-cols-2">
+          <label className="block sm:col-span-2">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-600">Adresse</span>
+            <input className={fieldClass} onChange={(event) => setAddress(event.target.value)} placeholder="Straße, Stadt, Land" value={address} />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-600">Bewertung: {rating}/10</span>
+            <input className="h-11 w-full accent-blue-600" max={10} min={1} onChange={(event) => setRating(Number(event.target.value))} type="range" value={rating} />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-600">Sichtbarkeit</span>
+            <select className={fieldClass} onChange={(event) => setVisibility(event.target.value as CountryVisibility)} value={visibility}>
+              {visibilityOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-600">Breitengrad</span>
+            <input className={fieldClass} max={90} min={-90} onChange={(event) => setLatitude(event.target.value)} placeholder="35.6762" step="any" type="number" value={latitude} />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-600">Längengrad</span>
+            <input className={fieldClass} max={180} min={-180} onChange={(event) => setLongitude(event.target.value)} placeholder="139.6503" step="any" type="number" value={longitude} />
+          </label>
+        </div>
+      </details>
+
+      <Button className="w-full sm:w-auto" disabled={isSaving} type="submit">
+        <Plus aria-hidden="true" size={16} />
+        {isSaving ? "Speichere..." : "Ort hinzufügen"}
+      </Button>
     </form>
   );
 }

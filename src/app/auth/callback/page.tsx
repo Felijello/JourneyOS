@@ -55,7 +55,7 @@ function CallbackContent() {
 
       if (isMounted) {
         setMessage("Login erfolgreich. JourneyOS wird geöffnet...");
-        router.replace("/settings");
+        router.replace("/");
         router.refresh();
       }
     }

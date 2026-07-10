@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import {
   Bot,
   CloudSun,
@@ -11,9 +12,11 @@ import {
   Route,
   ShieldCheck,
   Sparkles,
+  LogIn,
 } from "lucide-react";
 import { AuthPanel } from "@/components/auth/AuthPanel";
 import { useTravel } from "@/components/providers/CountryProvider";
+import { Button } from "@/components/ui/Button";
 
 const roadmap = [
   "Öffentliche Reiseprofile für Familie und Freunde",
@@ -29,7 +32,14 @@ type HealthStatus = {
 };
 
 export function SettingsPage() {
-  const { dataSource, capabilityStatus, supabaseStatus } = useTravel();
+  const router = useRouter();
+  const {
+    dataSource,
+    capabilityStatus,
+    supabaseStatus,
+    isDemoMode,
+    leaveDemoMode,
+  } = useTravel();
   const [health, setHealth] = useState<HealthStatus>({});
   const supabaseConnected = dataSource === "supabase";
   const supabaseReady = supabaseStatus.configured;
@@ -65,6 +75,8 @@ export function SettingsPage() {
           description={
             supabaseConnected
               ? "Supabase verbunden: Länder, Orte, Trips, Fotos, Links und Packlisten nutzen die Datenbank."
+              : isDemoMode
+                ? "Du testest JourneyOS gerade lokal. Deine Demo-Daten bleiben nur in diesem Browser."
               : supabaseAuthError
                 ? "Supabase Env Vars sind gesetzt, aber Auth konnte nicht geprüft werden. Prüfe URL, Anon Key und die Supabase Auth Settings."
               : supabaseReady
@@ -75,6 +87,8 @@ export function SettingsPage() {
           title={
             supabaseConnected
               ? "Supabase verbunden"
+              : isDemoMode
+                ? "Demo aktiv"
               : supabaseReady
                 ? "Supabase bereit"
                 : "Supabase fehlt"
@@ -84,13 +98,13 @@ export function SettingsPage() {
           active={supabaseReady}
           description={
             supabaseConnected
-              ? "Storage ist bereit, sofern der Bucket travel-photos und die Policies aus schema.sql existieren."
+              ? "Der private Bucket travel-photos ist eingerichtet. Uploads funktionieren mit deinem Login."
               : supabaseReady
-                ? "Storage ist vorbereitet. Foto-Uploads starten nach Magic Link und mit Bucket travel-photos."
+                ? "Der private Bucket travel-photos ist eingerichtet. Foto-Uploads starten nach dem Login."
                 : "Storage braucht Supabase Env Vars und den Bucket travel-photos."
           }
           icon={<HardDrive size={22} />}
-          title={supabaseConnected ? "Storage vorbereitet" : "Storage bereit nach Magic Link"}
+          title="Foto-Speicher"
         />
         <StatusCard
           active
@@ -175,7 +189,26 @@ export function SettingsPage() {
         </article>
       </section>
 
-      <AuthPanel />
+      {isDemoMode ? (
+        <section className="rounded-lg border border-blue-200 bg-blue-50 p-5">
+          <h2 className="text-lg font-semibold text-slate-950">Demo-Modus</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Bereit für deine echten Daten? Verlasse die Demo und melde dich an.
+          </p>
+          <Button
+            className="mt-4"
+            onClick={() => {
+              leaveDemoMode();
+              router.push("/login");
+            }}
+          >
+            <LogIn aria-hidden="true" size={17} />
+            Zum Login
+          </Button>
+        </section>
+      ) : (
+        <AuthPanel />
+      )}
     </div>
   );
 }

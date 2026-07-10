@@ -5,9 +5,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Globe2,
-  MapPinned,
   Plane,
-  Sparkles,
   Star,
 } from "lucide-react";
 import { CountryCard } from "@/components/countries/CountryCard";
@@ -39,7 +37,7 @@ function StatCard({
   };
 
   return (
-    <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-card">
+    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-card">
       <div className="flex items-center gap-4">
         <span
           className={`flex size-12 items-center justify-center rounded-full ${tones[tone]}`}
@@ -61,17 +59,12 @@ function StatCard({
 export function DashboardPage() {
   const {
     countries,
-    trips,
     isLoading,
     error,
-    capabilityStatus,
   } = useTravel();
   const visited = countries.filter((country) => country.status === "visited").length;
   const planned = countries.filter((country) => country.status === "planned").length;
   const wishlist = countries.filter((country) => country.status === "must_visit").length;
-  const upcomingTrips = trips.filter((trip) =>
-    ["idea", "planned", "booked"].includes(trip.status),
-  ).length;
   const recentCountries = [...countries]
     .toSorted(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
@@ -79,14 +72,14 @@ export function DashboardPage() {
     .slice(0, 4);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7">
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-            Guten Morgen, Felix! ✈️
+            Wohin geht&apos;s als Nächstes?
           </h1>
           <p className="mt-2 text-sm font-medium text-slate-500">
-            Bereit für dein nächstes Abenteuer?
+            Sammle Länder, plane Trips und behalte deine Ideen im Blick.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -101,7 +94,7 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <StatCard
           helper="Deine echten Reise-Erinnerungen"
           icon={CheckCircle2}
@@ -130,13 +123,6 @@ export function DashboardPage() {
           tone="violet"
           value={countries.length}
         />
-        <StatCard
-          helper="Ideen, Pläne und Buchungen"
-          icon={CalendarDays}
-          label="Upcoming Trips"
-          tone="slate"
-          value={upcomingTrips}
-        />
       </section>
 
       {error ? (
@@ -145,14 +131,14 @@ export function DashboardPage() {
         </p>
       ) : null}
 
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-card">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-card sm:p-4">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold tracking-tight text-slate-950">
               Weltkarte
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Marker heute, Länder-Flächen später. Die Architektur ist dafür vorbereitet.
+              Länderflächen zeigen deinen Status, Orte erscheinen als Marker.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -173,7 +159,7 @@ export function DashboardPage() {
         <WorldMap countries={countries} />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_320px]">
+      <section className="space-y-4">
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -193,10 +179,7 @@ export function DashboardPage() {
           {isLoading ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               {[1, 2, 3, 4].map((item) => (
-                <div
-                  className="h-72 animate-pulse rounded-3xl bg-white/70"
-                  key={item}
-                />
+                <div className="h-72 animate-pulse rounded-xl bg-white/70" key={item} />
               ))}
             </div>
           ) : recentCountries.length ? (
@@ -213,35 +196,6 @@ export function DashboardPage() {
           )}
         </div>
 
-        <aside className="space-y-4">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-2">
-              <Sparkles aria-hidden="true" className="text-blue-600" size={18} />
-              <h2 className="font-semibold text-slate-950">AI & Reise-Tools</h2>
-            </div>
-            <div className="mt-4 space-y-2 text-sm">
-              <p className="rounded-2xl bg-slate-50 px-3 py-2 text-slate-600">
-                Wetter: Open-Meteo aktiv, kein API-Key nötig.
-              </p>
-              <p className="rounded-2xl bg-slate-50 px-3 py-2 text-slate-600">
-                Routing:{" "}
-                {capabilityStatus.routing ? "OpenRouteService bereit." : "API-Key fehlt."}
-              </p>
-              <p className="rounded-2xl bg-slate-50 px-3 py-2 text-slate-600">
-                AI: Gemini serverseitig vorbereitet.
-              </p>
-            </div>
-          </div>
-          <div className="rounded-3xl border border-dashed border-blue-200 bg-blue-50/70 p-5 text-center">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-white text-blue-600 shadow-sm">
-              <MapPinned aria-hidden="true" size={22} />
-            </div>
-            <h2 className="mt-3 font-semibold text-slate-950">Nächster Schritt</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Orte und Trips füttern später Routen, Wetter-Checks und AI-Reisepläne.
-            </p>
-          </div>
-        </aside>
       </section>
     </div>
   );

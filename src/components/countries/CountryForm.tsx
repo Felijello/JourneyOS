@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save } from "lucide-react";
+import { ChevronDown, LockKeyhole, Save, Star } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import {
   continentLabels,
@@ -10,14 +10,15 @@ import {
   countryStatuses,
   visibilityOptions,
 } from "@/lib/country-options";
-import type { Country, CountryFormInput } from "@/types/country";
+import { cn } from "@/lib/utils";
+import type { Country, CountryFormInput, CountryStatus } from "@/types/country";
 
 const defaultInput: CountryFormInput = {
   name: "",
   countryCode: "",
   continent: "Europe",
   status: "visited",
-  personalRating: 7,
+  personalRating: 8,
   shortNote: "",
   longNote: "",
   bestTravelMonths: "",
@@ -29,10 +30,19 @@ const defaultInput: CountryFormInput = {
   visitedTo: null,
 };
 
+const statusTones: Record<CountryStatus, string> = {
+  visited: "border-emerald-300 bg-emerald-50 text-emerald-800",
+  planned: "border-blue-300 bg-blue-50 text-blue-800",
+  must_visit: "border-amber-300 bg-amber-50 text-amber-800",
+  maybe: "border-violet-300 bg-violet-50 text-violet-800",
+  no_interest: "border-slate-300 bg-slate-100 text-slate-700",
+};
+
+const fieldClass =
+  "h-12 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-base text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100";
+
 function toInput(country?: Country): CountryFormInput {
-  if (!country) {
-    return defaultInput;
-  }
+  if (!country) return defaultInput;
 
   return {
     name: country.name,
@@ -65,7 +75,6 @@ export function CountryForm({
   const [input, setInput] = useState<CountryFormInput>(() => toInput(country));
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-
   const ratingLabel = useMemo(() => `${input.personalRating}/10`, [input.personalRating]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -73,7 +82,7 @@ export function CountryForm({
     setFormError(null);
 
     if (!input.name.trim()) {
-      setFormError("Bitte gib einen Ländernamen ein.");
+      setFormError("Wie heißt das Land?");
       return;
     }
     if (input.name.trim().length > 100) {
@@ -81,7 +90,7 @@ export function CountryForm({
       return;
     }
     if (input.visitedFrom && input.visitedTo && input.visitedTo < input.visitedFrom) {
-      setFormError("Das Besuchsende darf nicht vor dem Besuchsbeginn liegen.");
+      setFormError("Das Enddatum darf nicht vor dem Startdatum liegen.");
       return;
     }
     if (input.latitude != null && (input.latitude < -90 || input.latitude > 90)) {
@@ -109,9 +118,7 @@ export function CountryForm({
       router.push(`/countries/${savedCountry.id}`);
     } catch (error) {
       setFormError(
-        error instanceof Error
-          ? error.message
-          : "Das Land konnte nicht gespeichert werden.",
+        error instanceof Error ? error.message : "Das Land konnte nicht gespeichert werden.",
       );
     } finally {
       setIsSaving(false);
@@ -120,114 +127,73 @@ export function CountryForm({
 
   return (
     <form
-      className="space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5 sm:p-6"
+      className="space-y-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
       onSubmit={handleSubmit}
     >
       {formError ? (
-        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700 ring-1 ring-red-100 dark:bg-red-400/10 dark:text-red-200 dark:ring-red-400/20">
+        <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
           {formError}
         </p>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <label className="space-y-2">
-          <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
-            Land
-          </span>
+      <label className="block">
+        <span className="mb-2 block text-sm font-semibold text-slate-700">Welches Land?</span>
+        <input
+          autoFocus={!country}
+          className={fieldClass}
+          maxLength={100}
+          onChange={(event) => setInput({ ...input, name: event.target.value })}
+          placeholder="z. B. Japan"
+          required
+          value={input.name}
+        />
+      </label>
+
+      <fieldset>
+        <legend className="mb-3 text-sm font-semibold text-slate-700">Wo steht es für dich?</legend>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          {countryStatuses.map((status) => (
+            <button
+              aria-pressed={input.status === status.value}
+              className={cn(
+                "min-h-14 rounded-lg border px-3 py-2 text-left text-xs font-semibold leading-4 transition",
+                input.status === status.value
+                  ? statusTones[status.value]
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+              )}
+              key={status.value}
+              onClick={() => setInput({ ...input, status: status.value })}
+              type="button"
+            >
+              {status.label}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      <div className="grid gap-5 sm:grid-cols-[1fr_220px]">
+        <label className="block">
+          <span className="mb-2 block text-sm font-semibold text-slate-700">Kurze Notiz</span>
           <input
-            className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
-            onChange={(event) => setInput({ ...input, name: event.target.value })}
-            placeholder="z. B. Japan"
-            maxLength={100}
-            required
-            value={input.name}
+            className={fieldClass}
+            maxLength={180}
+            onChange={(event) => setInput({ ...input, shortNote: event.target.value })}
+            placeholder="Was verbindest du damit?"
+            value={input.shortNote}
           />
         </label>
 
-        <label className="space-y-2">
-          <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
-            Kontinent
-          </span>
-          <select
-            className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
-            onChange={(event) =>
-              setInput({
-                ...input,
-                continent: event.target.value as CountryFormInput["continent"],
-              })
-            }
-            value={input.continent}
-          >
-            {continents.map((continent) => (
-              <option key={continent} value={continent}>
-                {continentLabels[continent]}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <label className="space-y-2">
-          <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
-            Ländercode
+        <label className="block">
+          <span className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-700">
+            <span className="flex items-center gap-1.5">
+              <Star aria-hidden="true" className="text-amber-500" size={16} />
+              Bewertung
+            </span>
+            <strong className="text-slate-950">{ratingLabel}</strong>
           </span>
           <input
-            className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base uppercase text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
-            maxLength={2}
-            onChange={(event) =>
-              setInput({ ...input, countryCode: event.target.value.toUpperCase() })
-            }
-            placeholder="JP"
-            value={input.countryCode ?? ""}
-          />
-        </label>
-        <label className="space-y-2 md:col-span-2">
-          <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
-            Cover-Foto-URL optional
-          </span>
-          <input
-            className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
-            onChange={(event) =>
-              setInput({ ...input, coverPhotoUrl: event.target.value })
-            }
-            placeholder="https://..."
-            type="url"
-            value={input.coverPhotoUrl ?? ""}
-          />
-        </label>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <label className="space-y-2">
-          <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
-            Status
-          </span>
-          <select
-            className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
-            onChange={(event) =>
-              setInput({
-                ...input,
-                status: event.target.value as CountryFormInput["status"],
-              })
-            }
-            value={input.status}
-          >
-            {countryStatuses.map((status) => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="space-y-2">
-          <span className="flex items-center justify-between text-sm font-semibold text-graphite-800 dark:text-zinc-200">
-            Bewertung
-            <span className="text-graphite-500 dark:text-zinc-400">{ratingLabel}</span>
-          </span>
-          <input
-            className="h-12 w-full accent-moss-600"
+            aria-label="Persönliche Bewertung"
+            className="h-12 w-full accent-blue-600"
             max={10}
             min={1}
             onChange={(event) =>
@@ -237,147 +203,165 @@ export function CountryForm({
             value={input.personalRating}
           />
         </label>
-
-        <label className="space-y-2">
-          <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
-            Sichtbarkeit
-          </span>
-          <select
-            className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
-            onChange={(event) =>
-              setInput({
-                ...input,
-                visibility: event.target.value as CountryFormInput["visibility"],
-              })
-            }
-            value={input.visibility}
-          >
-            {visibilityOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
 
-      <label className="space-y-2 block">
-        <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
-          Kurze Notiz
-        </span>
-        <input
-          className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
-          onChange={(event) => setInput({ ...input, shortNote: event.target.value })}
-          placeholder="Ein Satz, der sofort wieder das Gefühl trifft."
-          value={input.shortNote}
-        />
-      </label>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <label className="space-y-2">
-          <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
-            Besuch von optional
-          </span>
-          <input
-            className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
-            onChange={(event) =>
-              setInput({ ...input, visitedFrom: event.target.value || null })
-            }
-            type="date"
-            value={input.visitedFrom ?? ""}
+      <details className="group rounded-lg border border-slate-200 bg-slate-50/70">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-semibold text-slate-700">
+          <span>Mehr Details hinzufügen</span>
+          <ChevronDown
+            aria-hidden="true"
+            className="transition group-open:rotate-180"
+            size={18}
           />
-        </label>
-        <label className="space-y-2">
-          <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
-            Besuch bis optional
-          </span>
-          <input
-            className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
-            onChange={(event) =>
-              setInput({ ...input, visitedTo: event.target.value || null })
-            }
-            min={input.visitedFrom ?? undefined}
-            type="date"
-            value={input.visitedTo ?? ""}
-          />
-        </label>
-      </div>
+        </summary>
+        <div className="space-y-5 border-t border-slate-200 p-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-700">Kontinent</span>
+              <select
+                className={fieldClass}
+                onChange={(event) =>
+                  setInput({
+                    ...input,
+                    continent: event.target.value as CountryFormInput["continent"],
+                  })
+                }
+                value={input.continent}
+              >
+                {continents.map((continent) => (
+                  <option key={continent} value={continent}>
+                    {continentLabels[continent]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                <LockKeyhole aria-hidden="true" size={15} />
+                Sichtbarkeit
+              </span>
+              <select
+                className={fieldClass}
+                onChange={(event) =>
+                  setInput({
+                    ...input,
+                    visibility: event.target.value as CountryFormInput["visibility"],
+                  })
+                }
+                value={input.visibility}
+              >
+                {visibilityOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
 
-      <label className="space-y-2 block">
-        <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
-          Längere Beschreibung
-        </span>
-        <textarea
-          className="min-h-36 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-3 text-base leading-7 text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
-          onChange={(event) => setInput({ ...input, longNote: event.target.value })}
-          placeholder="Was reizt dich daran, was war besonders, welche Route wäre spannend?"
-          value={input.longNote}
-        />
-      </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-700">Reise von</span>
+              <input
+                className={fieldClass}
+                onChange={(event) => setInput({ ...input, visitedFrom: event.target.value || null })}
+                type="date"
+                value={input.visitedFrom ?? ""}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-700">Bis</span>
+              <input
+                className={fieldClass}
+                min={input.visitedFrom ?? undefined}
+                onChange={(event) => setInput({ ...input, visitedTo: event.target.value || null })}
+                type="date"
+                value={input.visitedTo ?? ""}
+              />
+            </label>
+          </div>
 
-      <label className="space-y-2 block">
-        <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
-          Beste Reisemonate
-        </span>
-        <input
-          className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
-          onChange={(event) =>
-            setInput({ ...input, bestTravelMonths: event.target.value })
-          }
-          placeholder="z. B. April bis Juni, September"
-          value={input.bestTravelMonths}
-        />
-      </label>
+          <label className="block">
+            <span className="mb-2 block text-sm font-semibold text-slate-700">Beste Reisemonate</span>
+            <input
+              className={fieldClass}
+              onChange={(event) => setInput({ ...input, bestTravelMonths: event.target.value })}
+              placeholder="z. B. April bis Juni"
+              value={input.bestTravelMonths}
+            />
+          </label>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <label className="space-y-2">
-          <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
-            Breitengrad optional
-          </span>
-          <input
-            className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
-            onChange={(event) =>
-              setInput({
-                ...input,
-                latitude: event.target.value ? Number(event.target.value) : null,
-              })
-            }
-            placeholder="Automatisch für bekannte Länder"
-            max={90}
-            min={-90}
-            step="any"
-            type="number"
-            value={input.latitude ?? ""}
-          />
-        </label>
-        <label className="space-y-2">
-          <span className="text-sm font-semibold text-graphite-800 dark:text-zinc-200">
-            Längengrad optional
-          </span>
-          <input
-            className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
-            onChange={(event) =>
-              setInput({
-                ...input,
-                longitude: event.target.value ? Number(event.target.value) : null,
-              })
-            }
-            placeholder="Automatisch für bekannte Länder"
-            max={180}
-            min={-180}
-            step="any"
-            type="number"
-            value={input.longitude ?? ""}
-          />
-        </label>
-      </div>
+          <label className="block">
+            <span className="mb-2 block text-sm font-semibold text-slate-700">Längere Notiz</span>
+            <textarea
+              className="min-h-28 w-full rounded-lg border border-slate-200 bg-white px-3 py-3 text-base leading-6 text-slate-950 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              onChange={(event) => setInput({ ...input, longNote: event.target.value })}
+              placeholder="Erinnerungen, Ideen oder Dinge, die du nicht vergessen willst"
+              value={input.longNote}
+            />
+          </label>
 
-      <div className="flex flex-col gap-3 border-t border-zinc-200 pt-5 dark:border-white/10 sm:flex-row sm:justify-end">
-        <Button
-          className="w-full sm:w-auto"
-          disabled={isSaving}
-          type="submit"
-        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-700">Ländercode</span>
+              <input
+                className={fieldClass}
+                maxLength={2}
+                onChange={(event) => setInput({ ...input, countryCode: event.target.value.toUpperCase() })}
+                placeholder="JP"
+                value={input.countryCode ?? ""}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-700">Cover-Foto URL</span>
+              <input
+                className={fieldClass}
+                onChange={(event) => setInput({ ...input, coverPhotoUrl: event.target.value })}
+                placeholder="https://..."
+                type="url"
+                value={input.coverPhotoUrl ?? ""}
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-700">Breitengrad</span>
+              <input
+                className={fieldClass}
+                max={90}
+                min={-90}
+                onChange={(event) =>
+                  setInput({ ...input, latitude: event.target.value ? Number(event.target.value) : null })
+                }
+                placeholder="Wird oft automatisch erkannt"
+                step="any"
+                type="number"
+                value={input.latitude ?? ""}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-700">Längengrad</span>
+              <input
+                className={fieldClass}
+                max={180}
+                min={-180}
+                onChange={(event) =>
+                  setInput({ ...input, longitude: event.target.value ? Number(event.target.value) : null })
+                }
+                placeholder="Wird oft automatisch erkannt"
+                step="any"
+                type="number"
+                value={input.longitude ?? ""}
+              />
+            </label>
+          </div>
+        </div>
+      </details>
+
+      <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs leading-5 text-slate-500">
+          Name und Status reichen. Alles andere kannst du später ergänzen.
+        </p>
+        <Button className="w-full sm:w-auto" disabled={isSaving} type="submit">
           <Save aria-hidden="true" size={17} />
           {isSaving ? "Speichere..." : submitLabel}
         </Button>

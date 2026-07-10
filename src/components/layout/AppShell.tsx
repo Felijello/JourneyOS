@@ -1,17 +1,17 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays,
   Compass,
   Globe2,
   Home,
+  LoaderCircle,
   Map,
   Plus,
   Settings,
-  Sparkles,
 } from "lucide-react";
 import {
   CountryProvider,
@@ -30,9 +30,11 @@ const navigation = [
 ];
 
 function DataSourcePill() {
-  const { dataSource, capabilityStatus, supabaseStatus } = useTravel();
+  const { dataSource, capabilityStatus, supabaseStatus, isDemoMode } = useTravel();
   const label =
-    dataSource === "supabase"
+    isDemoMode
+      ? "Demo"
+      : dataSource === "supabase"
       ? "Supabase aktiv"
       : capabilityStatus.supabase
         ? supabaseStatus.authStatus === "error"
@@ -42,7 +44,9 @@ function DataSourcePill() {
           : "Magic Link nötig"
         : "Demo-Modus";
   const tone =
-    dataSource === "supabase"
+    isDemoMode
+      ? "bg-amber-50 text-amber-700 ring-amber-200"
+      : dataSource === "supabase"
       ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
       : capabilityStatus.supabase
         ? "bg-blue-50 text-blue-700 ring-blue-200"
@@ -65,9 +69,9 @@ function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-4 left-4 z-30 hidden w-64 overflow-y-auto rounded-3xl border border-slate-200/80 bg-white/82 px-4 py-5 shadow-card backdrop-blur-2xl lg:flex lg:flex-col">
+    <aside className="fixed inset-y-4 left-4 z-30 hidden w-64 overflow-y-auto rounded-2xl border border-slate-200 bg-white/92 px-4 py-5 shadow-card backdrop-blur-xl lg:flex lg:flex-col">
       <Link className="flex items-center gap-3 px-2" href="/">
-        <span className="flex size-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-sm">
+        <span className="flex size-11 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
           <Compass aria-hidden="true" size={22} />
         </span>
         <span>
@@ -91,7 +95,7 @@ function Sidebar() {
           return (
             <Link
               className={cn(
-                "flex min-h-11 items-center gap-3 rounded-2xl px-3 text-sm font-semibold transition",
+                "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold transition",
                 isActive
                   ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-950",
@@ -106,24 +110,10 @@ function Sidebar() {
         })}
       </nav>
 
-      <div className="mt-auto space-y-4">
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
-            <Sparkles aria-hidden="true" className="text-blue-600" size={17} />
-            AI vorbereitet
-          </div>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            Die Suche kombiniert Gemini, Open-Meteo und Geocoding für schnelle
-            Reisezeit-Checks.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 border-t border-slate-200 pt-4">
-          <div className="size-10 rounded-full bg-[url('https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80')] bg-cover" />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900">Felix</p>
-            <p className="text-xs text-blue-600">Premium Traveller</p>
-          </div>
-        </div>
+      <div className="mt-auto border-t border-slate-200 px-2 pt-4">
+        <p className="text-xs leading-5 text-slate-500">
+          Deine Reisedaten sind standardmäßig privat.
+        </p>
       </div>
     </aside>
   );
@@ -136,7 +126,7 @@ function MobileNav() {
   return (
     <nav
       aria-label="Mobile Navigation"
-      className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-3xl border border-slate-200 bg-white/94 p-1.5 shadow-large backdrop-blur-2xl lg:hidden"
+      className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-large backdrop-blur-xl lg:hidden"
     >
       {mobileItems.map((item) => {
         const Icon = item.icon;
@@ -148,7 +138,7 @@ function MobileNav() {
         return (
           <Link
             className={cn(
-              "flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[11px] font-semibold transition",
+              "flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition",
               isActive
                 ? "bg-blue-50 text-blue-700 ring-1 ring-blue-100"
                 : "text-slate-500 hover:bg-slate-50",
@@ -170,7 +160,7 @@ function TopBar() {
     <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-[#f8fbff]/85 px-4 py-4 backdrop-blur-2xl sm:px-6 lg:border-none lg:bg-transparent lg:px-8 lg:pt-8">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
         <Link className="flex items-center gap-3 lg:hidden" href="/">
-          <span className="flex size-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-950 shadow-sm">
+          <span className="flex size-10 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
             <Compass aria-hidden="true" size={20} />
           </span>
           <span className="text-base font-semibold tracking-tight text-slate-950">
@@ -182,7 +172,7 @@ function TopBar() {
 
         <div className="flex items-center gap-2">
           <DataSourcePill />
-          <LinkButton className="rounded-2xl" href="/countries/new">
+          <LinkButton href="/countries/new">
             <Plus aria-hidden="true" size={17} />
             Land
           </LinkButton>
@@ -195,7 +185,48 @@ function TopBar() {
   );
 }
 
+function AuthLoading() {
+  return (
+    <main className="grid min-h-screen place-items-center bg-white px-4">
+      <div className="text-center">
+        <span className="mx-auto flex size-12 items-center justify-center rounded-xl bg-blue-600 text-white shadow-soft">
+          <Compass aria-hidden="true" size={23} />
+        </span>
+        <LoaderCircle
+          aria-hidden="true"
+          className="mx-auto mt-5 animate-spin text-blue-600"
+          size={22}
+        />
+        <p className="mt-3 text-sm font-medium text-slate-500">JourneyOS startet...</p>
+      </div>
+    </main>
+  );
+}
+
 function ShellContent({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { isLoading, isDemoMode, supabaseStatus } = useTravel();
+  const isAuthRoute =
+    pathname === "/login" ||
+    pathname === "/reset-password" ||
+    pathname.startsWith("/auth/");
+  const hasAccess = isDemoMode || supabaseStatus.authenticated;
+
+  useEffect(() => {
+    if (!isLoading && !isAuthRoute && !hasAccess) {
+      router.replace("/login");
+    }
+  }, [hasAccess, isAuthRoute, isLoading, router]);
+
+  if (isAuthRoute) {
+    return <>{children}</>;
+  }
+
+  if (isLoading || !hasAccess) {
+    return <AuthLoading />;
+  }
+
   return (
     <div className="min-h-screen text-slate-950">
       <Sidebar />

@@ -37,13 +37,6 @@
   --leaflet-tile-filter: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --leaflet-tile-filter: brightness(0.7) saturate(0.8) contrast(1.15);
-  }
-}
-
 * {
   box-sizing: border-box;
 }
@@ -55,9 +48,7 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
-  background:
-    radial-gradient(circle at 10% 0%, rgba(219, 234, 254, 0.65), transparent 28rem),
-    linear-gradient(180deg, #f8fbff 0%, #f5f7fb 52%, #eef4f7 100%);
+  background: #f6f8fb;
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 

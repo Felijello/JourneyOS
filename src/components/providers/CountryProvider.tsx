@@ -63,6 +63,7 @@ type ServerCapabilities = {
 
 type TravelContextValue = TravelState & {
   isLoading: boolean;
+  isDemoMode: boolean;
   error: string | null;
   dataSource: DataSource;
   supabaseStatus: {
@@ -113,6 +114,7 @@ type TravelContextValue = TravelState & {
     input: Omit<AiGeneration, "id" | "createdAt">,
   ) => Promise<AiGeneration>;
   enableDemoMode: () => void;
+  leaveDemoMode: () => void;
   refreshCountries: () => Promise<void>;
 };
 
@@ -120,6 +122,12 @@ const TravelContext = createContext<TravelContextValue | null>(null);
 
 const storageKey = "journeyos:travel-state:v2";
 const legacyCountryStorageKey = "journeyos:countries:v1";
+const demoModeStorageKey = "journeyos:demo-mode";
+
+function readDemoMode() {
+  return typeof window !== "undefined" &&
+    window.localStorage.getItem(demoModeStorageKey) === "active";
+}
 
 function ensureTravelState(state: Partial<TravelState> | null): TravelState {
   return {
@@ -225,6 +233,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dataSource, setDataSource] = useState<DataSource>("local");
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const [supabaseAuthStatus, setSupabaseAuthStatus] = useState<SupabaseAuthStatus>(
     isSupabaseConfigured ? "signed_out" : "unconfigured",
   );
@@ -271,6 +280,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
     if (!supabase) {
       setState(localState);
       setDataSource("local");
+      setIsDemoMode(readDemoMode());
       setSupabaseAuthStatus("unconfigured");
       setIsLoading(false);
       return;
@@ -284,6 +294,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
     if (sessionError) {
       setState(localState);
       setDataSource("local");
+      setIsDemoMode(readDemoMode());
       setSupabaseAuthStatus("error");
       setError(null);
       setIsLoading(false);
@@ -293,6 +304,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
     if (!session?.user) {
       setState(localState);
       setDataSource("local");
+      setIsDemoMode(readDemoMode());
       setSupabaseAuthStatus("signed_out");
       setError(null);
       setIsLoading(false);
@@ -300,6 +312,8 @@ export function CountryProvider({ children }: { children: ReactNode }) {
     }
 
     setSupabaseAuthStatus("signed_in");
+    setIsDemoMode(false);
+    window.localStorage.removeItem(demoModeStorageKey);
 
     const [
       countriesResult,
@@ -373,11 +387,18 @@ export function CountryProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const enableDemoMode = useCallback(() => {
+    window.localStorage.setItem(demoModeStorageKey, "active");
     writeLocalState(seedTravelState);
     setState(seedTravelState);
     setDataSource("local");
+    setIsDemoMode(true);
     setError(null);
     setSupabaseAuthStatus(isSupabaseConfigured ? "signed_out" : "unconfigured");
+  }, []);
+
+  const leaveDemoMode = useCallback(() => {
+    window.localStorage.removeItem(demoModeStorageKey);
+    setIsDemoMode(false);
   }, []);
 
   useEffect(() => {
@@ -1004,6 +1025,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
     () => ({
       ...state,
       isLoading,
+      isDemoMode,
       error,
       dataSource,
       supabaseStatus,
@@ -1031,11 +1053,13 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       createRoute,
       createAiGeneration,
       enableDemoMode,
+      leaveDemoMode,
       refreshCountries,
     }),
     [
       state,
       isLoading,
+      isDemoMode,
       error,
       dataSource,
       supabaseStatus,
@@ -1063,6 +1087,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       createRoute,
       createAiGeneration,
       enableDemoMode,
+      leaveDemoMode,
       refreshCountries,
     ],
   );

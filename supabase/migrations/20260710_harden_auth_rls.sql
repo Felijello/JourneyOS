@@ -18,6 +18,8 @@ begin
 end;
 $$;
 
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert or update of email on auth.users
@@ -229,6 +231,23 @@ using ((select auth.uid()) = user_id);
 
 -- Public and family sharing remain data-model states only. Expose them later
 -- through a dedicated safe view/API that omits private notes and metadata.
+
+-- Expose the tables to signed-in clients. RLS still decides which rows each
+-- user can read and change; anonymous visitors receive no table privileges.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on table
+  public.profiles,
+  public.countries,
+  public.places,
+  public.trips,
+  public.trip_days,
+  public.trip_day_items,
+  public.photos,
+  public.routes,
+  public.saved_links,
+  public.packing_items,
+  public.ai_generations
+to authenticated;
 
 do $$
 begin
