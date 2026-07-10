@@ -52,6 +52,7 @@ export function TripForm({
       : defaultTrip,
   );
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,16 +60,47 @@ export function TripForm({
       setError("Bitte gib dem Trip einen Titel.");
       return;
     }
-    const saved = await onSubmit({
-      ...input,
-      title: input.title.trim(),
-      countryId: input.countryId || null,
-      startDate: input.startDate || null,
-      endDate: input.endDate || null,
-      coverPhotoUrl: input.coverPhotoUrl || null,
-      notes: input.notes.trim(),
-    });
-    router.push(`/trips/${saved.id}`);
+    if (input.title.trim().length > 120) {
+      setError("Der Titel darf höchstens 120 Zeichen lang sein.");
+      return;
+    }
+    if (input.startDate && input.endDate && input.endDate < input.startDate) {
+      setError("Das Enddatum darf nicht vor dem Startdatum liegen.");
+      return;
+    }
+    if (input.budgetEstimate != null && input.budgetEstimate < 0) {
+      setError("Das Budget darf nicht negativ sein.");
+      return;
+    }
+    if (!/^[A-Za-z]{3}$/.test(input.currency.trim())) {
+      setError("Bitte verwende einen dreistelligen Währungscode, z. B. EUR.");
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+    try {
+      const saved = await onSubmit({
+        ...input,
+        title: input.title.trim(),
+        countryId: input.countryId || null,
+        startDate: input.startDate || null,
+        endDate: input.endDate || null,
+        currency: input.currency.trim().toUpperCase(),
+        coverPhotoUrl: input.coverPhotoUrl?.trim() || null,
+        travelStyle: input.travelStyle.trim(),
+        notes: input.notes.trim(),
+      });
+      router.push(`/trips/${saved.id}`);
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Der Trip konnte nicht gespeichert werden.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -84,7 +116,7 @@ export function TripForm({
       <div className="grid gap-4 md:grid-cols-2">
         <label className="space-y-2">
           <span className="text-sm font-semibold text-slate-700">Titel</span>
-          <input className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 outline-none" value={input.title} onChange={(event) => setInput({ ...input, title: event.target.value })} placeholder="z. B. Island Ringstraße" />
+          <input className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 outline-none" maxLength={120} required value={input.title} onChange={(event) => setInput({ ...input, title: event.target.value })} placeholder="z. B. Island Ringstraße" />
         </label>
         <label className="space-y-2">
           <span className="text-sm font-semibold text-slate-700">Land</span>
@@ -101,7 +133,7 @@ export function TripForm({
         </label>
         <label className="space-y-2">
           <span className="text-sm font-semibold text-slate-700">Ende</span>
-          <input className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 outline-none" type="date" value={input.endDate ?? ""} onChange={(event) => setInput({ ...input, endDate: event.target.value })} />
+          <input className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 outline-none" min={input.startDate ?? undefined} type="date" value={input.endDate ?? ""} onChange={(event) => setInput({ ...input, endDate: event.target.value })} />
         </label>
         <label className="space-y-2">
           <span className="text-sm font-semibold text-slate-700">Status</span>
@@ -119,11 +151,11 @@ export function TripForm({
       <div className="grid gap-4 md:grid-cols-3">
         <label className="space-y-2">
           <span className="text-sm font-semibold text-slate-700">Budget</span>
-          <input className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 outline-none" type="number" value={input.budgetEstimate ?? ""} onChange={(event) => setInput({ ...input, budgetEstimate: event.target.value ? Number(event.target.value) : null })} />
+          <input className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 outline-none" min={0} step="0.01" type="number" value={input.budgetEstimate ?? ""} onChange={(event) => setInput({ ...input, budgetEstimate: event.target.value ? Number(event.target.value) : null })} />
         </label>
         <label className="space-y-2">
           <span className="text-sm font-semibold text-slate-700">Währung</span>
-          <input className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 outline-none" value={input.currency} onChange={(event) => setInput({ ...input, currency: event.target.value })} />
+          <input className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 uppercase outline-none" maxLength={3} value={input.currency} onChange={(event) => setInput({ ...input, currency: event.target.value.toUpperCase() })} />
         </label>
         <label className="space-y-2">
           <span className="text-sm font-semibold text-slate-700">Reisestil</span>
@@ -134,7 +166,9 @@ export function TripForm({
         <span className="text-sm font-semibold text-slate-700">Notizen</span>
         <textarea className="min-h-32 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 outline-none" value={input.notes} onChange={(event) => setInput({ ...input, notes: event.target.value })} />
       </label>
-      <Button className="w-full rounded-2xl sm:w-auto" type="submit">{submitLabel}</Button>
+      <Button className="w-full rounded-2xl sm:w-auto" disabled={isSaving} type="submit">
+        {isSaving ? "Speichere..." : submitLabel}
+      </Button>
     </form>
   );
 }

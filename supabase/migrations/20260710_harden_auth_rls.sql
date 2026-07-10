@@ -229,3 +229,41 @@ using ((select auth.uid()) = user_id);
 
 -- Public and family sharing remain data-model states only. Expose them later
 -- through a dedicated safe view/API that omits private notes and metadata.
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'countries_valid_dates') then
+    alter table public.countries
+      add constraint countries_valid_dates
+      check (visited_from is null or visited_to is null or visited_to >= visited_from)
+      not valid;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'countries_valid_coordinates') then
+    alter table public.countries
+      add constraint countries_valid_coordinates
+      check (
+        (latitude is null or latitude between -90 and 90)
+        and (longitude is null or longitude between -180 and 180)
+      ) not valid;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'places_valid_coordinates') then
+    alter table public.places
+      add constraint places_valid_coordinates
+      check (
+        (latitude is null and longitude is null)
+        or (latitude between -90 and 90 and longitude between -180 and 180)
+      ) not valid;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'trips_valid_dates') then
+    alter table public.trips
+      add constraint trips_valid_dates
+      check (start_date is null or end_date is null or end_date >= start_date)
+      not valid;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'trips_non_negative_budget') then
+    alter table public.trips
+      add constraint trips_non_negative_budget
+      check (budget_estimate is null or budget_estimate >= 0)
+      not valid;
+  end if;
+end $$;

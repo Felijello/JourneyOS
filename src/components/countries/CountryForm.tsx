@@ -76,6 +76,22 @@ export function CountryForm({
       setFormError("Bitte gib einen Ländernamen ein.");
       return;
     }
+    if (input.name.trim().length > 100) {
+      setFormError("Der Ländername darf höchstens 100 Zeichen lang sein.");
+      return;
+    }
+    if (input.visitedFrom && input.visitedTo && input.visitedTo < input.visitedFrom) {
+      setFormError("Das Besuchsende darf nicht vor dem Besuchsbeginn liegen.");
+      return;
+    }
+    if (input.latitude != null && (input.latitude < -90 || input.latitude > 90)) {
+      setFormError("Der Breitengrad muss zwischen -90 und 90 liegen.");
+      return;
+    }
+    if (input.longitude != null && (input.longitude < -180 || input.longitude > 180)) {
+      setFormError("Der Längengrad muss zwischen -180 und 180 liegen.");
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -122,6 +138,8 @@ export function CountryForm({
             className="h-12 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-base text-graphite-950 outline-none transition focus:border-moss-500 focus:ring-2 focus:ring-moss-500/20 dark:border-white/10 dark:bg-graphite-900 dark:text-white"
             onChange={(event) => setInput({ ...input, name: event.target.value })}
             placeholder="z. B. Japan"
+            maxLength={100}
+            required
             value={input.name}
           />
         </label>
@@ -278,6 +296,7 @@ export function CountryForm({
             onChange={(event) =>
               setInput({ ...input, visitedTo: event.target.value || null })
             }
+            min={input.visitedFrom ?? undefined}
             type="date"
             value={input.visitedTo ?? ""}
           />
@@ -324,6 +343,9 @@ export function CountryForm({
               })
             }
             placeholder="Automatisch für bekannte Länder"
+            max={90}
+            min={-90}
+            step="any"
             type="number"
             value={input.latitude ?? ""}
           />
@@ -341,6 +363,9 @@ export function CountryForm({
               })
             }
             placeholder="Automatisch für bekannte Länder"
+            max={180}
+            min={-180}
+            step="any"
             type="number"
             value={input.longitude ?? ""}
           />
