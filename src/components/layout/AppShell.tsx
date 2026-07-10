@@ -50,14 +50,15 @@ function DataSourcePill() {
         : "bg-amber-50 text-amber-700 ring-amber-200";
 
   return (
-    <span
+    <Link
       className={cn(
-        "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1",
+        "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 transition hover:brightness-95",
         tone,
       )}
+      href={dataSource === "supabase" ? "/settings" : "/login"}
     >
       {label}
-    </span>
+    </Link>
   );
 }
 
