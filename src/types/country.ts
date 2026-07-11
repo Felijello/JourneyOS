@@ -100,6 +100,9 @@ export type Trip = {
   currency: string;
   travelStyle: string;
   visibility: CountryVisibility;
+  destinationName: string;
+  description: string;
+  highlights: string[];
   coverPhotoUrl?: string | null;
   notes: string;
   createdAt: string;

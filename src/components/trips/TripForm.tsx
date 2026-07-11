@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDays, ChevronDown, Save } from "lucide-react";
+import { CalendarDays, ChevronDown, ImagePlus, Save } from "lucide-react";
+import { useSocial } from "@/components/providers/SocialProvider";
 import { Button } from "@/components/ui/Button";
 import { tripStatuses, visibilityOptions } from "@/lib/country-options";
 import type {
@@ -23,6 +24,9 @@ const defaultTrip: TripFormInput = {
   currency: "EUR",
   travelStyle: "",
   visibility: "private",
+  destinationName: "",
+  description: "",
+  highlights: [],
   coverPhotoUrl: "",
   notes: "",
 };
@@ -44,6 +48,7 @@ export function TripForm({
   framed?: boolean;
 }) {
   const router = useRouter();
+  const { refreshSocial, travelPhotos, uploadTripPhotos } = useSocial();
   const [input, setInput] = useState<TripFormInput>(
     trip
       ? {
@@ -56,6 +61,9 @@ export function TripForm({
           currency: trip.currency,
           travelStyle: trip.travelStyle,
           visibility: trip.visibility,
+          destinationName: trip.destinationName,
+          description: trip.description,
+          highlights: trip.highlights,
           coverPhotoUrl: trip.coverPhotoUrl ?? "",
           notes: trip.notes,
         }
@@ -63,6 +71,7 @@ export function TripForm({
   );
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [pendingPhotos, setPendingPhotos] = useState<File[]>([]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -99,8 +108,18 @@ export function TripForm({
         currency: input.currency.trim().toUpperCase(),
         coverPhotoUrl: input.coverPhotoUrl?.trim() || null,
         travelStyle: input.travelStyle.trim(),
+        destinationName:
+          input.destinationName.trim() ||
+          countries.find((country) => country.id === input.countryId)?.name ||
+          "",
+        description: input.description.trim(),
+        highlights: input.highlights.map((item) => item.trim()).filter(Boolean).slice(0, 8),
         notes: input.notes.trim(),
       });
+      if (pendingPhotos.length) {
+        await uploadTripPhotos(saved.id, pendingPhotos);
+      }
+      await refreshSocial();
       router.push(`/trips/${saved.id}`);
     } catch (submitError) {
       setError(
@@ -139,7 +158,15 @@ export function TripForm({
           <span className="mb-2 block text-sm font-semibold text-slate-700">Land</span>
           <select
             className={fieldClass}
-            onChange={(event) => setInput({ ...input, countryId: event.target.value })}
+            onChange={(event) => {
+              const countryId = event.target.value;
+              const country = countries.find((item) => item.id === countryId);
+              setInput({
+                ...input,
+                countryId,
+                destinationName: input.destinationName || country?.name || "",
+              });
+            }}
             value={input.countryId ?? ""}
           >
             <option value="">Noch offen</option>
@@ -149,6 +176,44 @@ export function TripForm({
           </select>
         </label>
       </div>
+
+      <label className="block">
+        <span className="mb-2 block text-sm font-semibold text-slate-700">Ort oder Reiseziel</span>
+        <input
+          className={fieldClass}
+          maxLength={100}
+          onChange={(event) => setInput({ ...input, destinationName: event.target.value })}
+          placeholder="z. B. Lissabon, Portugal"
+          value={input.destinationName}
+        />
+      </label>
+
+      <label className="block">
+        <span className="mb-2 block text-sm font-semibold text-slate-700">Beschreibung</span>
+        <textarea
+          className="min-h-28 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-base text-slate-950 outline-none focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+          maxLength={1200}
+          onChange={(event) => setInput({ ...input, description: event.target.value })}
+          placeholder="Worum geht es bei dieser Reise? Öffentliche Reisen zeigen diesen Text auf deinem Profil."
+          value={input.description}
+        />
+      </label>
+
+      <label className="block">
+        <span className="mb-2 block text-sm font-semibold text-slate-700">Highlights</span>
+        <input
+          className={fieldClass}
+          onChange={(event) =>
+            setInput({
+              ...input,
+              highlights: event.target.value.split(","),
+            })
+          }
+          placeholder="Altstadt, Strand, Food Tour"
+          value={input.highlights.join(", ")}
+        />
+        <span className="mt-1.5 block text-xs text-slate-400">Mit Kommas trennen, maximal 8.</span>
+      </label>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="block">
@@ -238,7 +303,7 @@ export function TripForm({
               onChange={(event) => setInput({ ...input, visibility: event.target.value as CountryVisibility })}
               value={input.visibility}
             >
-              {visibilityOptions.map((option) => (
+              {visibilityOptions.filter((option) => option.value !== "family").map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
@@ -255,6 +320,36 @@ export function TripForm({
           </label>
         </div>
       </details>
+
+      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-slate-800">Reisefotos</p>
+            <p className="mt-1 text-xs text-slate-500">Bis zu 12 Bilder, jeweils maximal 6 MB.</p>
+          </div>
+          <label className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+            <ImagePlus aria-hidden="true" size={17} />
+            Fotos auswählen
+            <input
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              multiple
+              onChange={(event) => {
+                const existingCount = trip
+                  ? travelPhotos.filter((photo) => photo.tripId === trip.id).length
+                  : 0;
+                setPendingPhotos(Array.from(event.target.files ?? []).slice(0, 12 - existingCount));
+              }}
+              type="file"
+            />
+          </label>
+        </div>
+        {pendingPhotos.length ? (
+          <p className="mt-3 text-sm font-medium text-blue-700">
+            {pendingPhotos.length} {pendingPhotos.length === 1 ? "Foto" : "Fotos"} ausgewählt
+          </p>
+        ) : null}
+      </div>
 
       <Button className="w-full sm:w-auto" disabled={isSaving} type="submit">
         <Save aria-hidden="true" size={17} />

@@ -76,6 +76,9 @@ type TripRow = {
   currency: string | null;
   travel_style: string | null;
   visibility: Trip["visibility"];
+  destination_name: string | null;
+  description: string | null;
+  highlights: string[] | null;
   cover_photo_url: string | null;
   notes: string | null;
   created_at: string;
@@ -264,6 +267,9 @@ export function mapTripFromRow(row: TripRow): Trip {
     currency: row.currency ?? "EUR",
     travelStyle: row.travel_style ?? "",
     visibility: row.visibility,
+    destinationName: row.destination_name ?? "",
+    description: row.description ?? "",
+    highlights: row.highlights ?? [],
     coverPhotoUrl: row.cover_photo_url,
     notes: row.notes ?? "",
     createdAt: row.created_at,
@@ -282,6 +288,9 @@ export function mapTripToRow(input: TripFormInput) {
     currency: input.currency || "EUR",
     travel_style: input.travelStyle,
     visibility: input.visibility,
+    destination_name: input.destinationName,
+    description: input.description,
+    highlights: input.highlights,
     cover_photo_url: input.coverPhotoUrl ?? null,
     notes: input.notes,
   };

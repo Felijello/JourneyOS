@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { AiPanel } from "@/components/travel/AiPanel";
 import { PackingListPanel } from "@/components/trips/PackingListPanel";
-import { PhotoGallery } from "@/components/travel/PhotoGallery";
+import { TripGallery } from "@/components/trips/TripGallery";
 import { RoutingPanel } from "@/components/travel/RoutingPanel";
 import { SavedLinksPanel } from "@/components/travel/SavedLinksPanel";
 import { TripDayPlanner } from "@/components/trips/TripDayPlanner";
@@ -21,6 +21,7 @@ import { TripForm } from "@/components/trips/TripForm";
 import { WeatherPanel } from "@/components/travel/WeatherPanel";
 import { WorldMap } from "@/components/map/WorldMap";
 import { useTravel } from "@/components/providers/CountryProvider";
+import { useSocial } from "@/components/providers/SocialProvider";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { tripStatusLabels, visibilityLabels } from "@/lib/country-options";
@@ -28,6 +29,7 @@ import { formatDate } from "@/lib/utils";
 
 export function TripDetailPage({ id }: { id: string }) {
   const router = useRouter();
+  const { refreshSocial } = useSocial();
   const {
     trips,
     countries,
@@ -58,6 +60,7 @@ export function TripDetailPage({ id }: { id: string }) {
   async function handleDelete() {
     if (!window.confirm("Diesen Trip wirklich löschen?")) return;
     await deleteTrip(tripId);
+    await refreshSocial();
     router.push("/trips");
   }
 
@@ -164,7 +167,7 @@ export function TripDetailPage({ id }: { id: string }) {
           />
           <RoutingPanel places={tripPlaces} tripId={tripId} />
           <PackingListPanel tripId={tripId} />
-          <PhotoGallery countryId={country?.id} tripId={tripId} />
+          <TripGallery editable tripId={tripId} />
           <SavedLinksPanel countryId={country?.id} tripId={tripId} />
           <AiPanel
             context={`${trip.title}. ${trip.notes}. ${country?.name ?? ""}`}

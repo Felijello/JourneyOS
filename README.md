@@ -2,7 +2,19 @@
 
 JourneyOS ist ein persönliches Reise-Betriebssystem für Länder, Orte, Fotos,
 Trips, Tagespläne, Links, Budgets, Packlisten, Wetterchecks, Routing und
-AI-Reiseideen.
+AI-Reiseideen. Zusätzlich ist JourneyOS eine private-first Reise-Community mit
+Profilen, Follows, öffentlichen Reisetagebüchern, Likes und Trip-Galerien.
+
+## Community-Funktionen
+
+- Eindeutige, suchbare Usernames und verpflichtendes Profil-Onboarding
+- Profilbild, Bio, Anzeigename, Heimatort und Lieblingsreiseziele
+- Öffentliche oder private Profile
+- Folgen, Follower- und Gefolgt-Listen
+- Öffentliche Reisen mit Beschreibung, Highlights und Erstellerprofil
+- Reise-Likes
+- Sichere Trip-Galerie mit maximal 12 Fotos
+- Private Planungsdaten bleiben getrennt von veröffentlichten Reisedaten
 
 Die UI ist Deutsch. Code, Dateien, Variablen und Datenbankfelder sind Englisch.
 
@@ -60,8 +72,10 @@ Sicherheit:
 
 1. Supabase-Projekt öffnen.
 2. SQL Editor öffnen.
-3. Den kompletten Inhalt von `supabase/schema.sql` ausführen.
-4. Danach die Dateien in `supabase/migrations` in zeitlicher Reihenfolge ausführen.
+3. Bei einem neuen Projekt zuerst `supabase/schema.sql` ausführen.
+4. Danach alle Dateien in `supabase/migrations` in zeitlicher Reihenfolge ausführen.
+   Die Migrationen `social_platform` und `harden_social_rls` ergänzen Profile,
+   Follows, Likes, Community-Reisen, Einstellungen und die sichere Trip-Galerie.
 5. Authentication -> Providers -> Email und Passwort aktivieren.
 6. Authentication -> URL Configuration setzen:
      - Site URL: `https://journey-os-wine.vercel.app`
@@ -104,6 +118,11 @@ Das Schema erstellt:
 - `saved_links`
 - `packing_items`
 - `ai_generations`
+- `user_settings`
+- `follows`
+- `trip_publications`
+- `trip_likes`
+- `travel_photos`
 
 RLS ist aktiv. Eigene Daten sind nur für den Besitzer verwaltbar. Öffentliche
 Einträge sind für spätere Sharing-Features lesbar vorbereitet. `family` ist als
@@ -111,12 +130,20 @@ Feld vorbereitet, aber ohne Membership-Tabelle noch nicht fremdlesbar.
 
 ## Supabase Storage
 
-`supabase/schema.sql` erstellt den privaten Bucket `travel-photos` und Policies:
+JourneyOS verwendet zwei private Buckets:
+
+- `travel-photos` für Länder-, Orts- und Trip-Fotos
+- `profile-images` für Profilbilder
+
+Die Schema- und Social-Migrationen konfigurieren:
 
 - 6 MB Limit
 - JPEG, PNG, WEBP, GIF
 - Upload/Read/Update/Delete nur im eigenen User-Ordner
 - Upload-Pfade: `userId/entityId/file`
+- Öffentliche Trip-Fotos sind ausschließlich lesbar, wenn eine sichere
+  `trip_publications`-Zeile existiert
+- Profilbilder anderer Nutzer sind nur bei öffentlichen Profilen lesbar
 
 Wenn Uploads fehlschlagen:
 
@@ -134,6 +161,11 @@ Supabase:
 - Google Login ausführen
 - Land/Ort/Trip anlegen
 - Seite neu laden und prüfen, ob Daten bleiben
+- Profil-Onboarding abschließen
+- Username-Suche unter `/discover` testen
+- Folgen und Entfolgen testen
+- Trip privat anlegen, danach veröffentlichen und wieder privat stellen
+- Like setzen und wieder entfernen
 
 Storage:
 
@@ -141,6 +173,9 @@ Storage:
 - Country oder Trip Detail öffnen
 - Foto unter 6 MB hochladen
 - Sichtbarkeit wählen
+- Profilbild unter Einstellungen hochladen
+- Bis zu 12 Trip-Fotos hochladen
+- Trip-Foto löschen und austauschen
 
 MapTiler:
 
@@ -212,8 +247,12 @@ Danach Production neu deployen.
 - Wetterpanel prüfen
 - Route zwischen zwei Orten erstellen
 - AI-Buttons testen
-- `/settings` Integrationsstatus prüfen
+- Profil bearbeiten und Benachrichtigungen unter `/settings` prüfen
 - Google Login und Rückleitung zum Dashboard testen
+- Community-Suche und Profilseiten testen
+- Follower-/Following-Listen testen
+- Öffentlichen Trip und Likes testen
+- Prüfen, dass private Reisen nicht in der Community erscheinen
 
 ## Roadmap
 

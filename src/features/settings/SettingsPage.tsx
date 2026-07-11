@@ -1,245 +1,123 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Bot,
-  CloudSun,
-  Database,
-  HardDrive,
+  Bell,
+  ChevronRight,
+  Code2,
+  KeyRound,
   Lock,
-  Map,
-  Route,
+  LogOut,
+  Mail,
   ShieldCheck,
-  Sparkles,
-  LogIn,
+  UserRound,
 } from "lucide-react";
-import { AuthPanel } from "@/components/auth/AuthPanel";
+import { ProfileForm } from "@/components/profile/ProfileForm";
+import { useSocial } from "@/components/providers/SocialProvider";
 import { useTravel } from "@/components/providers/CountryProvider";
 import { Button } from "@/components/ui/Button";
-
-const roadmap = [
-  "Öffentliche Reiseprofile für Familie und Freunde",
-  "Detailkarten mit Routen, Orten und farbigen Länderflächen",
-  "KI-Reisepläne, Zielvergleiche und Reisezeit-Checks",
-  "EXIF-Auswertung für Fotos und automatische Kartenmarker",
-  "Budgetauswertung, Hotelverwaltung und bessere Packlisten",
-];
-
-type HealthStatus = {
-  ai?: boolean;
-  routing?: boolean;
-};
+import { supabase } from "@/lib/supabase/client";
 
 export function SettingsPage() {
   const router = useRouter();
-  const {
-    dataSource,
-    capabilityStatus,
-    supabaseStatus,
-    isDemoMode,
-    leaveDemoMode,
-  } = useTravel();
-  const [health, setHealth] = useState<HealthStatus>({});
-  const supabaseConnected = dataSource === "supabase";
-  const supabaseReady = supabaseStatus.configured;
-  const supabaseAuthError = supabaseStatus.authStatus === "error";
+  const { currentProfile, settings, updateSettings, isAdmin } = useSocial();
+  const { capabilityStatus, isDemoMode, leaveDemoMode } = useTravel();
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/health")
-      .then((response) => response.json())
-      .then((data: HealthStatus) => setHealth(data))
-      .catch(() => setHealth({}));
+    if (!supabase) return;
+    void supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""));
   }, []);
 
+  async function signOut() {
+    if (isDemoMode) leaveDemoMode();
+    await supabase?.auth.signOut();
+    router.replace("/login");
+    router.refresh();
+  }
+
+  async function sendPasswordReset() {
+    if (!supabase || !email) return;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: new URL("/reset-password", siteUrl).toString(),
+    });
+    setMessage(error ? "Der Link konnte gerade nicht gesendet werden." : "Reset-Link ist unterwegs.");
+  }
+
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-8">
       <div>
-        <p className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-100">
-          <ShieldCheck size={14} />
-          JourneyOS System
-        </p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-          Einstellungen & Info
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Hier siehst du, welche Integrationen bereit sind. Supabase kann
-          korrekt konfiguriert sein, auch wenn private Daten erst nach deinem
-          Magic-Link-Zugang geladen werden.
-        </p>
+        <p className="text-sm font-semibold text-blue-600">Dein JourneyOS</p>
+        <h1 className="mt-2 text-3xl font-semibold text-slate-950 sm:text-4xl">Einstellungen</h1>
+        <p className="mt-2 text-sm leading-6 text-slate-600">Profil, Privatsphäre und Benachrichtigungen an einem ruhigen Ort.</p>
       </div>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <StatusCard
-          active={supabaseReady}
-          description={
-            supabaseConnected
-              ? "Supabase verbunden: Länder, Orte, Trips, Fotos, Links und Packlisten nutzen die Datenbank."
-              : isDemoMode
-                ? "Du testest JourneyOS gerade lokal. Deine Demo-Daten bleiben nur in diesem Browser."
-              : supabaseAuthError
-                ? "Supabase Env Vars sind gesetzt, aber Auth konnte nicht geprüft werden. Prüfe URL, Anon Key und die Supabase Auth Settings."
-              : supabaseReady
-                ? "Supabase Env Vars sind gesetzt. Öffne den Magic Link, dann lädt JourneyOS deine privaten Tabellen."
-                : "Supabase Env Vars fehlen. JourneyOS läuft deshalb nur lokal."
-          }
-          icon={<Database size={22} />}
-          title={
-            supabaseConnected
-              ? "Supabase verbunden"
-              : isDemoMode
-                ? "Demo aktiv"
-              : supabaseReady
-                ? "Supabase bereit"
-                : "Supabase fehlt"
-          }
-        />
-        <StatusCard
-          active={supabaseReady}
-          description={
-            supabaseConnected
-              ? "Der private Bucket travel-photos ist eingerichtet. Uploads funktionieren mit deinem Login."
-              : supabaseReady
-                ? "Der private Bucket travel-photos ist eingerichtet. Foto-Uploads starten nach dem Login."
-                : "Storage braucht Supabase Env Vars und den Bucket travel-photos."
-          }
-          icon={<HardDrive size={22} />}
-          title="Foto-Speicher"
-        />
-        <StatusCard
-          active
-          description="Open-Meteo braucht keinen API-Key. Suche und Reisezeit-Checks nutzen Wetterdaten über Koordinaten."
-          icon={<CloudSun size={22} />}
-          title="Open-Meteo"
-        />
-        <StatusCard
-          active={Boolean(health.routing ?? capabilityStatus.routing)}
-          description={
-            health.routing ?? capabilityStatus.routing
-              ? "OpenRouteService ist serverseitig verbunden. Der Key muss nicht im Browser liegen."
-              : "OPENROUTESERVICE_API_KEY fehlt serverseitig. Routing bleibt vorbereitet."
-          }
-          icon={<Route size={22} />}
-          title="Routing"
-        />
-        <StatusCard
-          active={Boolean(health.ai ?? capabilityStatus.ai)}
-          description={
-            health.ai ?? capabilityStatus.ai
-              ? "Gemini ist serverseitig konfiguriert. Falls Gemini keinen Text liefert, nutzt JourneyOS eine saubere Kurzbeschreibung."
-              : "GEMINI_API_KEY fehlt oder wird von Gemini abgelehnt. JourneyOS zeigt dann eine lokale Kurzbeschreibung."
-          }
-          icon={<Bot size={22} />}
-          title="Gemini AI"
-        />
-        <StatusCard
-          active={capabilityStatus.maptiler}
-          description={
-            capabilityStatus.maptiler
-              ? "MapTiler-Key ist vorhanden. Karten nutzen den modernen MapTiler-Stil."
-              : "NEXT_PUBLIC_MAPTILER_KEY fehlt. OpenStreetMap wird als Fallback genutzt."
-          }
-          icon={<Map size={22} />}
-          title="Map Provider"
-        />
+      <SettingsSection icon={<UserRound size={20} />} subtitle="So sehen dich andere Reisende." title="Profil bearbeiten">
+        <ProfileForm />
+      </SettingsSection>
+
+      <SettingsSection icon={<Bell size={20} />} subtitle="Du entscheidest, wofür JourneyOS sich meldet." title="Benachrichtigungen">
+        <div className="divide-y divide-slate-100">
+          <SettingsToggle checked={settings?.socialNotifications ?? true} description="Neue Follower und Likes" label="Community" onChange={(checked) => void updateSettings({ socialNotifications: checked })} />
+          <SettingsToggle checked={settings?.tripReminders ?? true} description="Hinweise vor geplanten Reisen" label="Reiseerinnerungen" onChange={(checked) => void updateSettings({ tripReminders: checked })} />
+          <SettingsToggle checked={settings?.emailNotifications ?? true} description="Wichtige Konto- und Reiseupdates" label="E-Mail" onChange={(checked) => void updateSettings({ emailNotifications: checked })} />
+        </div>
+      </SettingsSection>
+
+      <SettingsSection icon={<ShieldCheck size={20} />} subtitle="Öffentliche Reisen zeigen nur veröffentlichte Inhalte." title="Datenschutz">
+        <div className="space-y-3 text-sm leading-6 text-slate-600">
+          <p>Private Reisen, Budgets, interne Notizen, Tagespläne, Packlisten und gespeicherte Links bleiben ausschließlich in deinem Konto.</p>
+          <p>Deine Profil-Sichtbarkeit und die Sichtbarkeit jeder Reise kannst du unabhängig voneinander ändern.</p>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection icon={<Lock size={20} />} subtitle="E-Mail, Passwort und Zugang." title="Account & Sicherheit">
+        <div className="divide-y divide-slate-100">
+          <div className="flex items-center gap-3 py-4"><Mail className="text-slate-400" size={18} /><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-slate-800">E-Mail-Adresse</p><p className="truncate text-sm text-slate-500">{email || "Google- oder Demo-Konto"}</p></div></div>
+          {!isDemoMode ? (
+            <button className="flex min-h-14 w-full items-center gap-3 py-3 text-left" onClick={() => void sendPasswordReset()} type="button"><KeyRound className="text-slate-400" size={18} /><span className="flex-1 text-sm font-semibold text-slate-800">Passwort ändern</span><ChevronRight className="text-slate-300" size={18} /></button>
+          ) : null}
+        </div>
+        {message ? <p className="mt-3 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-700">{message}</p> : null}
+      </SettingsSection>
+
+      <section className="border-t border-slate-200 pt-6">
+        <Button onClick={() => void signOut()} variant="danger"><LogOut size={17} />{isDemoMode ? "Demo verlassen" : "Abmelden"}</Button>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-        <article className="journey-card p-5">
-          <div className="flex items-start gap-3">
-            <Sparkles className="mt-1 text-blue-600" size={22} />
-            <div>
-              <h2 className="text-xl font-semibold text-slate-950">Roadmap</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                V1 legt den Kern. Die nächsten Versionen können ohne großen
-                Umbau auf Sharing, Polygone, bessere AI-Flows und EXIF-Fotos
-                aufbauen.
-              </p>
-            </div>
-          </div>
-          <ul className="mt-5 space-y-3">
-            {roadmap.map((item) => (
-              <li className="flex gap-3 text-sm text-slate-600" key={item}>
-                <span className="mt-1 h-2 w-2 rounded-full bg-blue-500" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </article>
-
-        <article className="journey-card p-5">
-          <div className="flex items-start gap-3">
-            <Lock className="mt-1 text-blue-600" size={22} />
-            <div>
-              <h2 className="text-xl font-semibold text-slate-950">
-                Privacy-Konzept
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                Private Daten bleiben standardmäßig privat. Länder, Orte,
-                Trips, Fotos und Links tragen bereits Sichtbarkeit. Supabase RLS
-                erlaubt volle Verwaltung nur für eigene Daten; öffentliches
-                Lesen ist nur für public vorbereitet.
-              </p>
-            </div>
-          </div>
-          <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-            Familienfreigaben sind als Feld vorbereitet. Für echte
-            Familiengruppen braucht V2 eine Membership- oder Einladungs-Tabelle.
-          </div>
-        </article>
-      </section>
-
-      {isDemoMode ? (
-        <section className="rounded-lg border border-blue-200 bg-blue-50 p-5">
-          <h2 className="text-lg font-semibold text-slate-950">Demo-Modus</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            Bereit für deine echten Daten? Verlasse die Demo und melde dich an.
-          </p>
-          <Button
-            className="mt-4"
-            onClick={() => {
-              leaveDemoMode();
-              router.push("/login");
-            }}
-          >
-            <LogIn aria-hidden="true" size={17} />
-            Zum Login
-          </Button>
-        </section>
-      ) : (
-        <AuthPanel />
-      )}
+      {isAdmin ? (
+        <details className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-slate-700"><Code2 size={17} />Entwicklerdiagnose</summary>
+          <dl className="mt-4 grid gap-2 text-xs text-slate-500 sm:grid-cols-2">
+            <div>AI: {capabilityStatus.ai ? "bereit" : "fehlt"}</div>
+            <div>Routing: {capabilityStatus.routing ? "bereit" : "fehlt"}</div>
+            <div>Karte: {capabilityStatus.maptiler ? "MapTiler" : "OSM"}</div>
+            <div>Profil: {currentProfile?.id ?? "nicht geladen"}</div>
+          </dl>
+        </details>
+      ) : null}
     </div>
   );
 }
 
-function StatusCard({
-  active,
-  description,
-  icon,
-  title,
-}: {
-  active: boolean;
-  description: string;
-  icon: ReactNode;
-  title: string;
-}) {
+function SettingsSection({ icon, title, subtitle, children }: { icon: React.ReactNode; title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <article className="journey-card p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className={active ? "text-emerald-600" : "text-amber-600"}>{icon}</div>
-        <span
-          className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${
-            active
-              ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
-              : "bg-amber-50 text-amber-700 ring-amber-100"
-          }`}
-        >
-          {active ? "Bereit" : "Prüfen"}
-        </span>
-      </div>
-      <h2 className="mt-4 text-lg font-semibold text-slate-950">{title}</h2>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
-    </article>
+    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="mb-6 flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-700">{icon}</span><div><h2 className="text-lg font-semibold text-slate-950">{title}</h2><p className="mt-1 text-sm text-slate-500">{subtitle}</p></div></div>
+      {children}
+    </section>
+  );
+}
+
+function SettingsToggle({ checked, label, description, onChange }: { checked: boolean; label: string; description: string; onChange: (checked: boolean) => void }) {
+  return (
+    <label className="flex min-h-16 cursor-pointer items-center gap-4 py-3">
+      <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-slate-800">{label}</span><span className="block text-sm text-slate-500">{description}</span></span>
+      <input checked={checked} className="peer sr-only" onChange={(event) => onChange(event.target.checked)} type="checkbox" />
+      <span className="relative h-7 w-12 rounded-full bg-slate-200 transition peer-checked:bg-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-400 peer-focus-visible:ring-offset-2 after:absolute after:left-1 after:top-1 after:size-5 after:rounded-full after:bg-white after:shadow-sm after:transition peer-checked:after:translate-x-5" />
+    </label>
   );
 }

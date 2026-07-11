@@ -11,6 +11,8 @@ import {
 import { CountryCard } from "@/components/countries/CountryCard";
 import { WorldMap } from "@/components/map/WorldMap";
 import { useTravel } from "@/components/providers/CountryProvider";
+import { useSocial } from "@/components/providers/SocialProvider";
+import { PublicTripCard } from "@/components/social/PublicTripCard";
 import { LinkButton } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { countryStatuses, statusMapColors } from "@/lib/country-options";
@@ -62,6 +64,7 @@ export function DashboardPage() {
     isLoading,
     error,
   } = useTravel();
+  const { publications, profiles } = useSocial();
   const visited = countries.filter((country) => country.status === "visited").length;
   const planned = countries.filter((country) => country.status === "planned").length;
   const wishlist = countries.filter((country) => country.status === "must_visit").length;
@@ -197,6 +200,27 @@ export function DashboardPage() {
         </div>
 
       </section>
+
+      {publications.length ? (
+        <section className="space-y-4">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-blue-600">Aus der Community</p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-950">Neue Reiseideen</h2>
+            </div>
+            <LinkButton href="/discover" variant="ghost">Entdecken<ArrowRight size={16} /></LinkButton>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {publications.slice(0, 3).map((publication) => (
+              <PublicTripCard
+                creator={profiles.find((profile) => profile.id === publication.userId)}
+                key={publication.tripId}
+                publication={publication}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

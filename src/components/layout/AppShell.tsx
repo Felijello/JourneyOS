@@ -12,55 +12,50 @@ import {
   Map,
   Plus,
   Settings,
+  UserRound,
+  UsersRound,
 } from "lucide-react";
 import {
   CountryProvider,
   useTravel,
 } from "@/components/providers/CountryProvider";
+import {
+  SocialProvider,
+  useSocial,
+} from "@/components/providers/SocialProvider";
 import { TravelSearch } from "@/components/travel/TravelSearch";
 import { LinkButton } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { href: "/", label: "Dashboard", icon: Home },
+  { href: "/discover", label: "Entdecken", icon: UsersRound },
   { href: "/countries", label: "Länder", icon: Globe2 },
   { href: "/trips", label: "Trips", icon: CalendarDays },
   { href: "/map", label: "Karte", icon: Map },
+  { href: "/profile", label: "Profil", icon: UserRound },
   { href: "/settings", label: "Einstellungen", icon: Settings },
 ];
 
-function DataSourcePill() {
-  const { dataSource, capabilityStatus, supabaseStatus, isDemoMode } = useTravel();
-  const label =
-    isDemoMode
-      ? "Demo"
-      : dataSource === "supabase"
-      ? "Supabase aktiv"
-      : capabilityStatus.supabase
-        ? supabaseStatus.authStatus === "error"
-          ? "Auth prüfen"
-          : supabaseStatus.authenticated
-          ? "Supabase lädt"
-          : "Magic Link nötig"
-        : "Demo-Modus";
-  const tone =
-    isDemoMode
-      ? "bg-amber-50 text-amber-700 ring-amber-200"
-      : dataSource === "supabase"
-      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-      : capabilityStatus.supabase
-        ? "bg-blue-50 text-blue-700 ring-blue-200"
-        : "bg-amber-50 text-amber-700 ring-amber-200";
+function ProfileShortcut() {
+  const { currentProfile } = useSocial();
+  const initials = (currentProfile?.displayName || currentProfile?.username || "J")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <Link
-      className={cn(
-        "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 transition hover:brightness-95",
-        tone,
-      )}
-      href={dataSource === "supabase" ? "/settings" : "/login"}
+      aria-label="Profil öffnen"
+      className="grid size-10 place-items-center overflow-hidden rounded-full bg-slate-900 text-xs font-semibold text-white ring-2 ring-white shadow-sm"
+      href="/profile"
+      title="Profil"
     >
-      {label}
+      {currentProfile?.avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img alt="" className="h-full w-full object-cover" src={currentProfile.avatarUrl} />
+      ) : (
+        initials
+      )}
     </Link>
   );
 }
@@ -111,9 +106,10 @@ function Sidebar() {
       </nav>
 
       <div className="mt-auto border-t border-slate-200 px-2 pt-4">
-        <p className="text-xs leading-5 text-slate-500">
-          Deine Reisedaten sind standardmäßig privat.
-        </p>
+        <div className="flex items-center gap-3 rounded-lg p-2 hover:bg-slate-50">
+          <ProfileShortcut />
+          <Link className="text-sm font-semibold text-slate-700" href="/profile">Mein Profil</Link>
+        </div>
       </div>
     </aside>
   );
@@ -121,12 +117,12 @@ function Sidebar() {
 
 function MobileNav() {
   const pathname = usePathname();
-  const mobileItems = navigation.slice(0, 4);
+  const mobileItems = [navigation[0], navigation[1], navigation[2], navigation[3], navigation[5]];
 
   return (
     <nav
       aria-label="Mobile Navigation"
-      className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-large backdrop-blur-xl lg:hidden"
+      className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-large backdrop-blur-xl lg:hidden"
     >
       {mobileItems.map((item) => {
         const Icon = item.icon;
@@ -171,7 +167,7 @@ function TopBar() {
         <TravelSearch className="hidden max-w-xl lg:block" />
 
         <div className="flex items-center gap-2">
-          <DataSourcePill />
+          <ProfileShortcut />
           <LinkButton href="/countries/new">
             <Plus aria-hidden="true" size={17} />
             Land
@@ -207,6 +203,8 @@ function ShellContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { isLoading, isDemoMode, supabaseStatus } = useTravel();
+  const { currentProfile, isLoading: isSocialLoading } = useSocial();
+  const isOnboardingRoute = pathname === "/onboarding";
   const isAuthRoute =
     pathname === "/login" ||
     pathname === "/reset-password" ||
@@ -226,15 +224,43 @@ function ShellContent({ children }: { children: ReactNode }) {
 
     if (!isLoading && !isAuthRoute && !hasAccess) {
       router.replace("/login");
+      return;
     }
-  }, [hasAccess, isAuthRoute, isLoading, router]);
+
+    if (
+      !isLoading &&
+      !isSocialLoading &&
+      supabaseStatus.authenticated &&
+      !isDemoMode &&
+      !isOnboardingRoute &&
+      currentProfile &&
+      !currentProfile.onboardingCompleted
+    ) {
+      router.replace("/onboarding");
+    }
+  }, [
+    currentProfile,
+    hasAccess,
+    isAuthRoute,
+    isDemoMode,
+    isLoading,
+    isOnboardingRoute,
+    isSocialLoading,
+    pathname,
+    router,
+    supabaseStatus.authenticated,
+  ]);
 
   if (isAuthRoute) {
     return <>{children}</>;
   }
 
-  if (isLoading || !hasAccess) {
+  if (isLoading || isSocialLoading || !hasAccess) {
     return <AuthLoading />;
+  }
+
+  if (isOnboardingRoute) {
+    return <>{children}</>;
   }
 
   return (
@@ -254,7 +280,9 @@ function ShellContent({ children }: { children: ReactNode }) {
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <CountryProvider>
-      <ShellContent>{children}</ShellContent>
+      <SocialProvider>
+        <ShellContent>{children}</ShellContent>
+      </SocialProvider>
     </CountryProvider>
   );
 }

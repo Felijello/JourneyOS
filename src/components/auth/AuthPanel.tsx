@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import {
   ArrowRight,
+  AtSign,
   Eye,
   EyeOff,
   KeyRound,
@@ -35,6 +36,7 @@ export function AuthPanel() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
@@ -75,6 +77,11 @@ export function AuthPanel() {
     if (mode !== "magic" && mode !== "recovery" && password.length < 8) {
       setIsError(true);
       setMessage("Dein Passwort braucht mindestens 8 Zeichen.");
+      return false;
+    }
+    if (mode === "register" && !/^[a-z0-9_]{3,24}$/.test(username.trim().toLowerCase())) {
+      setIsError(true);
+      setMessage("Dein Username braucht 3 bis 24 Zeichen: Buchstaben, Zahlen oder _.");
       return false;
     }
     return true;
@@ -124,7 +131,10 @@ export function AuthPanel() {
         const { data, error } = await supabase.auth.signUp({
           email: normalizedEmail,
           password,
-          options: { emailRedirectTo: authCallbackUrl },
+          options: {
+            emailRedirectTo: authCallbackUrl,
+            data: { username: username.trim().toLowerCase() },
+          },
         });
         setIsError(Boolean(error));
         if (error) {
@@ -374,6 +384,31 @@ export function AuthPanel() {
           </label>
         ) : null}
 
+        {mode === "register" ? (
+          <label className="block">
+            <span className="mb-2 block text-sm font-semibold text-slate-700">Username</span>
+            <span className="relative block">
+              <AtSign
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                size={17}
+              />
+              <input
+                autoComplete="username"
+                className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-3 text-base text-slate-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                maxLength={24}
+                minLength={3}
+                onChange={(event) =>
+                  setUsername(event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))
+                }
+                placeholder="felixtravels"
+                required
+                value={username}
+              />
+            </span>
+          </label>
+        ) : null}
+
         {mode === "login" ? (
           <button
             className="-mt-2 block min-h-9 text-sm font-semibold text-blue-700 hover:text-blue-900"
@@ -455,6 +490,9 @@ function getFriendlyAuthError(message: string) {
   }
   if (normalized.includes("user already registered")) {
     return "Für diese E-Mail gibt es schon ein Konto. Wechsle zum Login.";
+  }
+  if (normalized.includes("database error saving new user")) {
+    return "Der Username ist wahrscheinlich schon vergeben. Probiere bitte einen anderen.";
   }
   if (normalized.includes("rate limit")) {
     return "Zu viele Versuche. Warte bitte kurz und probiere es dann erneut.";
