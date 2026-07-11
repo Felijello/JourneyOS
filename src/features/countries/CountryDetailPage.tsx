@@ -39,7 +39,13 @@ export function CountryDetailPage() {
     [countries, params.id],
   );
   const countryPlaces = places.filter((place) => place.countryId === params.id);
-  const countryTrips = trips.filter((trip) => trip.countryId === params.id);
+  const countryTrips = trips.filter(
+    (trip) =>
+      trip.countryId === params.id ||
+      trip.countries.some(
+        (linked) => linked.countryCode === country?.countryCode,
+      ),
+  );
 
   if (isLoading) {
     return (
@@ -152,7 +158,7 @@ export function CountryDetailPage() {
               </p>
             </div>
             <div className="rounded-2xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Trips</p>
+              <p className="text-sm text-slate-500">Reisen</p>
               <p className="mt-2 text-2xl font-semibold">{countryTrips.length}</p>
             </div>
             <div className="rounded-2xl bg-slate-50 p-4">

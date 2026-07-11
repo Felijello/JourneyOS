@@ -14,6 +14,7 @@ import {
 import { AiPanel } from "@/components/travel/AiPanel";
 import { PackingListPanel } from "@/components/trips/PackingListPanel";
 import { TripGallery } from "@/components/trips/TripGallery";
+import { CoverImage } from "@/components/trips/CoverImage";
 import { RoutingPanel } from "@/components/travel/RoutingPanel";
 import { SavedLinksPanel } from "@/components/travel/SavedLinksPanel";
 import { TripDayPlanner } from "@/components/trips/TripDayPlanner";
@@ -41,6 +42,11 @@ export function TripDetailPage({ id }: { id: string }) {
 
   const trip = trips.find((item) => item.id === id);
   const country = countries.find((item) => item.id === trip?.countryId);
+  const linkedCountries = trip
+    ? countries.filter((item) =>
+        trip.countries.some((linked) => linked.countryCode === item.countryCode),
+      )
+    : [];
   const tripPlaces = places.filter((place) => place.countryId === trip?.countryId);
   const tripRoutes = routes.filter((route) => route.tripId === id);
 
@@ -48,9 +54,9 @@ export function TripDetailPage({ id }: { id: string }) {
     return (
       <EmptyState
         actionHref="/trips"
-        actionLabel="Zur Trip-Übersicht"
-        description="Dieser Trip existiert nicht mehr oder wurde lokal noch nicht geladen."
-        title="Trip nicht gefunden"
+        actionLabel="Zur Reiseübersicht"
+        description="Diese Reise existiert nicht mehr oder wurde lokal noch nicht geladen."
+        title="Reise nicht gefunden"
       />
     );
   }
@@ -58,7 +64,7 @@ export function TripDetailPage({ id }: { id: string }) {
   const tripId = trip.id;
 
   async function handleDelete() {
-    if (!window.confirm("Diesen Trip wirklich löschen?")) return;
+    if (!window.confirm("Diese Reise wirklich löschen?")) return;
     await deleteTrip(tripId);
     await refreshSocial();
     router.push("/trips");
@@ -73,14 +79,13 @@ export function TripDetailPage({ id }: { id: string }) {
         href="/trips"
       >
         <ArrowLeft size={16} />
-        Alle Trips
+        Alle Reisen
       </Link>
 
       <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-card">
         <div className="relative min-h-[260px]">
           {heroImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img alt="" className="absolute inset-0 h-full w-full object-cover" src={heroImage} />
+            <div className="absolute inset-0 overflow-hidden"><CoverImage positionX={trip.coverPositionX} positionY={trip.coverPositionY} src={heroImage} zoom={trip.coverPhotoUrl ? trip.coverZoom : 1} /></div>
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-blue-100 via-white to-emerald-100" />
           )}
@@ -103,7 +108,7 @@ export function TripDetailPage({ id }: { id: string }) {
           </div>
         </div>
         <div className="grid gap-3 border-t border-slate-100 p-4 sm:grid-cols-2 lg:grid-cols-4">
-          <InfoChip icon={<MapPin size={17} />} label="Land" value={country?.name ?? "Offen"} />
+          <InfoChip icon={<MapPin size={17} />} label={trip.countries.length > 1 ? "Länder" : "Land"} value={trip.countries.map((item) => item.countryName).join(", ") || country?.name || "Offen"} />
           <InfoChip
             icon={<CalendarDays size={17} />}
             label="Zeitraum"
@@ -133,7 +138,7 @@ export function TripDetailPage({ id }: { id: string }) {
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Trip bearbeiten
+                  Reise bearbeiten
                 </p>
                 <h2 className="mt-1 text-xl font-semibold text-slate-950">
                   Basisdaten
@@ -145,24 +150,23 @@ export function TripDetailPage({ id }: { id: string }) {
               countries={countries}
               framed={false}
               onSubmit={(input) => updateTrip(tripId, input)}
-              submitLabel="Änderungen speichern"
               trip={trip}
             />
             <Button className="mt-4 rounded-2xl" onClick={handleDelete} type="button" variant="danger">
               <Trash2 size={16} />
-              Trip löschen
+              Reise löschen
             </Button>
           </div>
         </div>
         <div className="space-y-4">
           <WorldMap
-            countries={country ? [country] : []}
+            countries={linkedCountries.length ? linkedCountries : country ? [country] : []}
             places={tripPlaces}
             routes={tripRoutes}
           />
           <WeatherPanel
-            latitude={country?.latitude}
-            longitude={country?.longitude}
+            latitude={trip.destinationLatitude ?? country?.latitude}
+            longitude={trip.destinationLongitude ?? country?.longitude}
             startDate={trip.startDate}
           />
           <RoutingPanel places={tripPlaces} tripId={tripId} />

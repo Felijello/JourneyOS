@@ -82,13 +82,13 @@ export function DashboardPage() {
             Wohin geht&apos;s als Nächstes?
           </h1>
           <p className="mt-2 text-sm font-medium text-slate-500">
-            Sammle Länder, plane Trips und behalte deine Ideen im Blick.
+            Sammle Länder, plane Reisen und behalte deine Ideen im Blick.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <LinkButton href="/trips/new" variant="secondary">
             <CalendarDays aria-hidden="true" size={17} />
-            Trip planen
+            Reise planen
           </LinkButton>
           <LinkButton href="/countries/new">
             Land hinzufügen

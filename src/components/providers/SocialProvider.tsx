@@ -72,11 +72,28 @@ type PublicationRow = {
   user_id: string;
   title: string;
   destination_name: string;
+  destination_city: string | null;
+  destination_region: string | null;
+  destination_country_name: string | null;
+  destination_country_code: string | null;
+  destination_latitude: number | null;
+  destination_longitude: number | null;
   start_date: string | null;
   end_date: string | null;
   description: string;
   highlights: string[] | null;
   cover_photo_url: string | null;
+  cover_storage_path: string | null;
+  cover_position_x: number | null;
+  cover_position_y: number | null;
+  cover_zoom: number | null;
+  countries: Array<{
+    countryCode: string;
+    countryName: string;
+    continent: TripPublication["countries"][number]["continent"];
+    latitude?: number | null;
+    longitude?: number | null;
+  }> | null;
   created_at: string;
   updated_at: string;
 };
@@ -105,7 +122,7 @@ const demoProfiles: Profile[] = [
     displayName: "Felix",
     avatarPath: null,
     avatarUrl: null,
-    bio: "Spontane Städtetrips, gute Aussicht und viel zu viele gespeicherte Orte.",
+    bio: "Spontane Städtereisen, gute Aussicht und viel zu viele gespeicherte Orte.",
     homeLocation: "Wien",
     favoriteDestinations: ["Japan", "Portugal", "Island"],
     profileVisibility: "public",
@@ -135,12 +152,32 @@ const demoPublications: TripPublication[] = [
     userId: "demo-lena",
     title: "Inselhüpfen in Griechenland",
     destinationName: "Kykladen, Griechenland",
+    destinationCity: "Kykladen",
+    destinationRegion: "Südliche Ägäis",
+    destinationCountryName: "Griechenland",
+    destinationCountryCode: "GR",
+    destinationLatitude: 37.0,
+    destinationLongitude: 25.3,
     startDate: "2026-08-18",
     endDate: "2026-08-29",
     description: "Elf Tage zwischen weißen Dörfern, ruhigen Buchten und richtig gutem Essen.",
     highlights: ["Naxos", "Paros", "Sonnenuntergang in Oia"],
     coverPhotoUrl:
       "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=1200&q=82",
+    coverStoragePath: null,
+    coverPositionX: 50,
+    coverPositionY: 50,
+    coverZoom: 1,
+    countries: [
+      {
+        countryCode: "GR",
+        countryName: "Griechenland",
+        continent: "Europe",
+        latitude: 39.0742,
+        longitude: 21.8243,
+        source: "destination",
+      },
+    ],
     createdAt: "2026-06-01T00:00:00.000Z",
     updatedAt: "2026-07-02T00:00:00.000Z",
   },
@@ -174,17 +211,31 @@ function mapSettings(row: SettingsRow): UserSettings {
   };
 }
 
-function mapPublication(row: PublicationRow): TripPublication {
+function mapPublication(row: PublicationRow, signedCoverUrl?: string | null): TripPublication {
   return {
     tripId: row.trip_id,
     userId: row.user_id,
     title: row.title,
     destinationName: row.destination_name,
+    destinationCity: row.destination_city,
+    destinationRegion: row.destination_region,
+    destinationCountryName: row.destination_country_name,
+    destinationCountryCode: row.destination_country_code,
+    destinationLatitude: row.destination_latitude,
+    destinationLongitude: row.destination_longitude,
     startDate: row.start_date,
     endDate: row.end_date,
     description: row.description,
     highlights: row.highlights ?? [],
-    coverPhotoUrl: row.cover_photo_url,
+    coverPhotoUrl: signedCoverUrl ?? row.cover_photo_url,
+    coverStoragePath: row.cover_storage_path,
+    coverPositionX: row.cover_position_x ?? 50,
+    coverPositionY: row.cover_position_y ?? 50,
+    coverZoom: row.cover_zoom ?? 1,
+    countries: (row.countries ?? []).map((country) => ({
+      ...country,
+      source: "destination" as const,
+    })),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -220,17 +271,30 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     if (isDemoMode || !supabase || !supabaseStatus.authenticated) {
       const localPublications: TripPublication[] = isDemoMode
         ? trips
-            .filter((trip) => trip.visibility === "public")
+            .filter(
+              (trip) => trip.visibility === "public" && trip.status === "completed",
+            )
             .map((trip) => ({
               tripId: trip.id,
               userId: "demo-user",
               title: trip.title,
               destinationName: trip.destinationName,
+              destinationCity: trip.destinationCity,
+              destinationRegion: trip.destinationRegion,
+              destinationCountryName: trip.destinationCountryName,
+              destinationCountryCode: trip.destinationCountryCode,
+              destinationLatitude: trip.destinationLatitude,
+              destinationLongitude: trip.destinationLongitude,
               startDate: trip.startDate,
               endDate: trip.endDate,
               description: trip.description,
               highlights: trip.highlights,
               coverPhotoUrl: trip.coverPhotoUrl,
+              coverStoragePath: trip.coverStoragePath,
+              coverPositionX: trip.coverPositionX,
+              coverPositionY: trip.coverPositionY,
+              coverZoom: trip.coverZoom,
+              countries: trip.countries,
               createdAt: trip.createdAt,
               updatedAt: trip.updatedAt,
             }))
@@ -302,6 +366,16 @@ export function SocialProvider({ children }: { children: ReactNode }) {
         return data?.signedUrl ?? null;
       }),
     );
+    const publicationRows = (publicationsResult.data ?? []) as PublicationRow[];
+    const publicationCoverUrls = await Promise.all(
+      publicationRows.map(async (row) => {
+        if (!row.cover_storage_path) return null;
+        const { data } = await client.storage
+          .from("travel-photos")
+          .createSignedUrl(row.cover_storage_path, 60 * 60);
+        return data?.signedUrl ?? null;
+      }),
+    );
 
     setProfiles(mappedProfiles);
     setCurrentProfile(mappedProfiles.find((profile) => profile.id === userData.user.id) ?? null);
@@ -313,7 +387,11 @@ export function SocialProvider({ children }: { children: ReactNode }) {
         createdAt: row.created_at,
       })),
     );
-    setPublications((publicationsResult.data ?? []).map((row) => mapPublication(row as PublicationRow)));
+    setPublications(
+      publicationRows.map((row, index) =>
+        mapPublication(row, publicationCoverUrls[index]),
+      ),
+    );
     setLikes(
       (likesResult.data ?? []).map((row) => ({
         userId: row.user_id,

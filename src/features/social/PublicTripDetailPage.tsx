@@ -6,6 +6,7 @@ import { useSocial } from "@/components/providers/SocialProvider";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { LikeButton } from "@/components/social/LikeButton";
 import { TripGallery } from "@/components/trips/TripGallery";
+import { CoverImage } from "@/components/trips/CoverImage";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDate } from "@/lib/utils";
 
@@ -21,8 +22,7 @@ export function PublicTripDetailPage({ id }: { id: string }) {
       <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-card">
         <div className="relative min-h-[320px]">
           {trip.coverPhotoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img alt="" className="absolute inset-0 h-full w-full object-cover" src={trip.coverPhotoUrl} />
+            <div className="absolute inset-0 overflow-hidden"><CoverImage positionX={trip.coverPositionX} positionY={trip.coverPositionY} src={trip.coverPhotoUrl} zoom={trip.coverZoom} /></div>
           ) : <div className="absolute inset-0 bg-[linear-gradient(135deg,#bfdbfe,#f8fafc_55%,#bbf7d0)]" />}
           <div className="absolute inset-0 bg-slate-950/45" />
           <div className="relative flex min-h-[320px] flex-col justify-end p-5 text-white sm:p-8">

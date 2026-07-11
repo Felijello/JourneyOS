@@ -46,11 +46,22 @@ export type TripPublication = {
   userId: string;
   title: string;
   destinationName: string;
+  destinationCity?: string | null;
+  destinationRegion?: string | null;
+  destinationCountryName?: string | null;
+  destinationCountryCode?: string | null;
+  destinationLatitude?: number | null;
+  destinationLongitude?: number | null;
   startDate?: string | null;
   endDate?: string | null;
   description: string;
   highlights: string[];
   coverPhotoUrl?: string | null;
+  coverStoragePath?: string | null;
+  coverPositionX: number;
+  coverPositionY: number;
+  coverZoom: number;
+  countries: TripCountry[];
   createdAt: string;
   updatedAt: string;
 };
@@ -72,3 +83,4 @@ export type TripGalleryPhoto = {
   createdAt: string;
   updatedAt: string;
 };
+import type { TripCountry } from "@/types/country";

@@ -287,7 +287,7 @@ export function AuthPanel() {
             : "Einloggen"}
       </h1>
       <p className="mt-3 text-sm leading-6 text-slate-600">
-        Länder, Ideen und echte Trips an einem Ort.
+        Länder, Ideen und echte Reisen an einem Ort.
       </p>
 
       <div

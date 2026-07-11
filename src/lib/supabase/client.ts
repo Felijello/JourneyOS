@@ -11,6 +11,7 @@ import type {
   SavedLink,
   TravelPhoto,
   Trip,
+  TripCountry,
   TripDay,
   TripDayItem,
   TripFormInput,
@@ -32,6 +33,8 @@ type CountryRow = {
   country_code: string | null;
   continent: Country["continent"];
   status: Country["status"];
+  manual_status?: Country["status"] | null;
+  completed_trip_count?: number | null;
   rating: number | null;
   personal_rating?: number | null;
   short_note: string | null;
@@ -77,12 +80,35 @@ type TripRow = {
   travel_style: string | null;
   visibility: Trip["visibility"];
   destination_name: string | null;
+  destination_city: string | null;
+  destination_region: string | null;
+  destination_country_name: string | null;
+  destination_country_code: string | null;
+  destination_latitude: number | null;
+  destination_longitude: number | null;
+  destination_external_id: string | null;
   description: string | null;
   highlights: string[] | null;
   cover_photo_url: string | null;
+  cover_storage_path: string | null;
+  cover_position_x: number | null;
+  cover_position_y: number | null;
+  cover_zoom: number | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type TripCountryRow = {
+  trip_id: string;
+  user_id: string | null;
+  country_id: string | null;
+  country_code: string;
+  country_name: string;
+  continent: TripCountry["continent"];
+  latitude: number | null;
+  longitude: number | null;
+  source: TripCountry["source"];
 };
 
 type TripDayRow = {
@@ -186,6 +212,8 @@ export function mapCountryFromRow(row: CountryRow): Country {
     countryCode: row.country_code,
     continent: row.continent,
     status: row.status,
+    manualStatus: row.manual_status ?? row.status,
+    completedTripCount: row.completed_trip_count ?? 0,
     personalRating: row.rating ?? row.personal_rating ?? 7,
     shortNote: row.short_note ?? "",
     longNote: row.long_note ?? "",
@@ -207,6 +235,7 @@ export function mapCountryToRow(input: CountryFormInput) {
     country_code: input.countryCode ?? null,
     continent: input.continent,
     status: input.status,
+    manual_status: input.status,
     rating: input.personalRating,
     short_note: input.shortNote,
     long_note: input.longNote,
@@ -254,12 +283,40 @@ export function mapPlaceToRow(input: PlaceFormInput) {
   };
 }
 
-export function mapTripFromRow(row: TripRow): Trip {
+export function mapTripCountryFromRow(row: TripCountryRow): TripCountry {
+  return {
+    tripId: row.trip_id,
+    userId: row.user_id,
+    countryId: row.country_id,
+    countryCode: row.country_code,
+    countryName: row.country_name,
+    continent: row.continent,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    source: row.source,
+  };
+}
+
+export function mapTripCountryToRow(input: TripCountry, tripId: string, userId?: string) {
+  return {
+    trip_id: tripId,
+    user_id: userId,
+    country_id: input.countryId ?? null,
+    country_code: input.countryCode.toUpperCase(),
+    country_name: input.countryName,
+    continent: input.continent,
+    latitude: input.latitude ?? null,
+    longitude: input.longitude ?? null,
+    source: input.source,
+  };
+}
+
+export function mapTripFromRow(row: TripRow, countries: TripCountry[] = []): Trip {
   return {
     id: row.id,
     userId: row.user_id,
     title: row.title,
-    countryId: row.country_id,
+    countryId: row.country_id ?? (countries.length === 1 ? countries[0].countryId : null),
     startDate: row.start_date,
     endDate: row.end_date,
     status: row.status,
@@ -268,9 +325,21 @@ export function mapTripFromRow(row: TripRow): Trip {
     travelStyle: row.travel_style ?? "",
     visibility: row.visibility,
     destinationName: row.destination_name ?? "",
+    destinationCity: row.destination_city,
+    destinationRegion: row.destination_region,
+    destinationCountryName: row.destination_country_name,
+    destinationCountryCode: row.destination_country_code,
+    destinationLatitude: row.destination_latitude,
+    destinationLongitude: row.destination_longitude,
+    destinationExternalId: row.destination_external_id,
     description: row.description ?? "",
     highlights: row.highlights ?? [],
     coverPhotoUrl: row.cover_photo_url,
+    coverStoragePath: row.cover_storage_path,
+    coverPositionX: row.cover_position_x ?? 50,
+    coverPositionY: row.cover_position_y ?? 50,
+    coverZoom: row.cover_zoom ?? 1,
+    countries,
     notes: row.notes ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -289,9 +358,20 @@ export function mapTripToRow(input: TripFormInput) {
     travel_style: input.travelStyle,
     visibility: input.visibility,
     destination_name: input.destinationName,
+    destination_city: input.destinationCity ?? null,
+    destination_region: input.destinationRegion ?? null,
+    destination_country_name: input.destinationCountryName ?? null,
+    destination_country_code: input.destinationCountryCode?.toUpperCase() ?? null,
+    destination_latitude: input.destinationLatitude ?? null,
+    destination_longitude: input.destinationLongitude ?? null,
+    destination_external_id: input.destinationExternalId ?? null,
     description: input.description,
     highlights: input.highlights,
-    cover_photo_url: input.coverPhotoUrl ?? null,
+    cover_photo_url: input.coverStoragePath ? null : input.coverPhotoUrl ?? null,
+    cover_storage_path: input.coverStoragePath ?? null,
+    cover_position_x: input.coverPositionX,
+    cover_position_y: input.coverPositionY,
+    cover_zoom: input.coverZoom,
     notes: input.notes,
   };
 }

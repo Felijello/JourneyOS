@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CalendarDays, MapPin } from "lucide-react";
+import { CoverImage } from "@/components/trips/CoverImage";
 import { LikeButton } from "@/components/social/LikeButton";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { formatDate } from "@/lib/utils";
@@ -11,8 +12,7 @@ export function PublicTripCard({ publication, creator }: { publication: TripPubl
       <Link className="block" href={`/community/trips/${publication.tripId}`}>
         <div className="relative aspect-[16/10] bg-slate-100">
           {publication.coverPhotoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img alt="" className="h-full w-full object-cover" src={publication.coverPhotoUrl} />
+            <CoverImage positionX={publication.coverPositionX} positionY={publication.coverPositionY} src={publication.coverPhotoUrl} zoom={publication.coverZoom} />
           ) : (
             <div className="h-full w-full bg-[linear-gradient(135deg,#dbeafe,#f8fafc_52%,#dcfce7)]" />
           )}

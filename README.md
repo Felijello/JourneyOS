@@ -1,9 +1,9 @@
 # JourneyOS
 
 JourneyOS ist ein persönliches Reise-Betriebssystem für Länder, Orte, Fotos,
-Trips, Tagespläne, Links, Budgets, Packlisten, Wetterchecks, Routing und
+Reisen, Tagespläne, Links, Budgets, Packlisten, Wetterchecks, Routing und
 AI-Reiseideen. Zusätzlich ist JourneyOS eine private-first Reise-Community mit
-Profilen, Follows, öffentlichen Reisetagebüchern, Likes und Trip-Galerien.
+Profilen, Follows, öffentlichen Reisetagebüchern, Likes und Reisegalerien.
 
 ## Community-Funktionen
 
@@ -13,7 +13,10 @@ Profilen, Follows, öffentlichen Reisetagebüchern, Likes und Trip-Galerien.
 - Folgen, Follower- und Gefolgt-Listen
 - Öffentliche Reisen mit Beschreibung, Highlights und Erstellerprofil
 - Reise-Likes
-- Sichere Trip-Galerie mit maximal 12 Fotos
+- Sichere Reisegalerie mit maximal 12 Fotos
+- Strukturierte Länder- und Reisezielsuche mit Open-Meteo
+- Mehrländer-Reisen und automatische Besuchserkennung
+- Cover-Upload mit Fokuspunkt, Zoom und sicherem Storage-Pfad
 - Private Planungsdaten bleiben getrennt von veröffentlichten Reisedaten
 
 Die UI ist Deutsch. Code, Dateien, Variablen und Datenbankfelder sind Englisch.
@@ -75,7 +78,9 @@ Sicherheit:
 3. Bei einem neuen Projekt zuerst `supabase/schema.sql` ausführen.
 4. Danach alle Dateien in `supabase/migrations` in zeitlicher Reihenfolge ausführen.
    Die Migrationen `social_platform` und `harden_social_rls` ergänzen Profile,
-   Follows, Likes, Community-Reisen, Einstellungen und die sichere Trip-Galerie.
+   Follows, Likes, Community-Reisen, Einstellungen und die sichere Reisegalerie.
+   `improve_travel_system` ergänzt strukturierte Ziele, Mehrländer-Reisen,
+   Cover-Fokus sowie die abgesicherte Besuchs- und Veröffentlichungslogik.
 5. Authentication -> Providers -> Email und Passwort aktivieren.
 6. Authentication -> URL Configuration setzen:
      - Site URL: `https://journey-os-wine.vercel.app`
@@ -111,6 +116,7 @@ Das Schema erstellt:
 - `countries`
 - `places`
 - `trips`
+- `trip_countries`
 - `trip_days`
 - `trip_day_items`
 - `photos`
@@ -132,16 +138,16 @@ Feld vorbereitet, aber ohne Membership-Tabelle noch nicht fremdlesbar.
 
 JourneyOS verwendet zwei private Buckets:
 
-- `travel-photos` für Länder-, Orts- und Trip-Fotos
+- `travel-photos` für Länder-, Orts-, Reise- und Coverfotos
 - `profile-images` für Profilbilder
 
 Die Schema- und Social-Migrationen konfigurieren:
 
-- 6 MB Limit
-- JPEG, PNG, WEBP, GIF
+- 8 MB Bucket-Limit; die Galerie begrenzt einzelne Fotos zusätzlich auf 6 MB
+- JPEG, PNG und WebP
 - Upload/Read/Update/Delete nur im eigenen User-Ordner
 - Upload-Pfade: `userId/entityId/file`
-- Öffentliche Trip-Fotos sind ausschließlich lesbar, wenn eine sichere
+- Öffentliche Reisefotos und Cover sind ausschließlich lesbar, wenn eine sichere
   `trip_publications`-Zeile existiert
 - Profilbilder anderer Nutzer sind nur bei öffentlichen Profilen lesbar
 
@@ -159,23 +165,27 @@ Supabase:
 - Einstellungen öffnen
 - Magic Link Login ausführen
 - Google Login ausführen
-- Land/Ort/Trip anlegen
+- Land, Ort oder Reise anlegen
 - Seite neu laden und prüfen, ob Daten bleiben
 - Profil-Onboarding abschließen
 - Username-Suche unter `/discover` testen
 - Folgen und Entfolgen testen
-- Trip privat anlegen, danach veröffentlichen und wieder privat stellen
+- Abgeschlossene Reise privat anlegen, veröffentlichen und wieder privat stellen
+- Prüfen, dass geplante Reisen nicht veröffentlicht werden können
+- `Jap` in der Ländersuche eingeben und Japan auswählen
+- `New York` in der Zielsuche auswählen und die automatische Länderübernahme prüfen
 - Like setzen und wieder entfernen
 
 Storage:
 
 - Angemeldet sein
-- Country oder Trip Detail öffnen
+- Länder- oder Reisedetail öffnen
 - Foto unter 6 MB hochladen
 - Sichtbarkeit wählen
 - Profilbild unter Einstellungen hochladen
-- Bis zu 12 Trip-Fotos hochladen
-- Trip-Foto löschen und austauschen
+- Cover hochladen, verschieben, zoomen, ersetzen und entfernen
+- Bis zu 12 Reisefotos hochladen
+- Reisefoto löschen und austauschen
 
 MapTiler:
 

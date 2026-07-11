@@ -25,7 +25,7 @@ export function DiscoverPage() {
   return (
     <div className="space-y-8">
       <section className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div><p className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600"><Sparkles size={15} />JourneyOS Community</p><h1 className="mt-2 text-3xl font-semibold text-slate-950 sm:text-4xl">Lass dich von echten Reisen inspirieren.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Finde Menschen, Reiseziele und öffentliche Trips aus der Community.</p></div>
+        <div><p className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600"><Sparkles size={15} />JourneyOS Community</p><h1 className="mt-2 text-3xl font-semibold text-slate-950 sm:text-4xl">Lass dich von echten Reisen inspirieren.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Finde Menschen, Reiseziele und öffentliche Reisen aus der Community.</p></div>
       </section>
       <label className="relative block max-w-2xl"><span className="sr-only">Community durchsuchen</span><Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={19} /><input className="h-13 w-full rounded-lg border border-slate-200 bg-white pl-12 pr-4 text-base shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" onChange={(event) => setQuery(event.target.value)} placeholder="Username, Ort oder Reise suchen" value={query} /></label>
 

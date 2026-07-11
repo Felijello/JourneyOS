@@ -30,6 +30,8 @@ import {
   mapTripDayItemFromRow,
   mapTripDayItemToRow,
   mapTripDayToRow,
+  mapTripCountryFromRow,
+  mapTripCountryToRow,
   mapTripFromRow,
   mapTripToRow,
   supabase,
@@ -88,6 +90,13 @@ type TravelContextValue = TravelState & {
   createTrip: (input: TripFormInput) => Promise<Trip>;
   updateTrip: (id: string, input: TripFormInput) => Promise<Trip>;
   deleteTrip: (id: string) => Promise<void>;
+  uploadTripCover: (
+    tripId: string,
+    file: File,
+    crop: { positionX: number; positionY: number; zoom: number },
+    fallbackTrip?: Trip,
+  ) => Promise<Trip>;
+  deleteTripCover: (tripId: string) => Promise<Trip>;
   createTripDay: (
     input: Omit<TripDay, "id" | "createdAt" | "updatedAt">,
   ) => Promise<TripDay>;
@@ -131,9 +140,21 @@ function readDemoMode() {
 
 function ensureTravelState(state: Partial<TravelState> | null): TravelState {
   return {
-    countries: state?.countries?.length ? state.countries : seedTravelState.countries,
+    countries: (state?.countries?.length ? state.countries : seedTravelState.countries).map(
+      (country) => ({
+        ...country,
+        manualStatus: country.manualStatus ?? country.status,
+        completedTripCount: country.completedTripCount ?? 0,
+      }),
+    ),
     places: state?.places ?? seedTravelState.places,
-    trips: state?.trips ?? seedTravelState.trips,
+    trips: (state?.trips ?? seedTravelState.trips).map((trip) => ({
+      ...trip,
+      countries: trip.countries ?? [],
+      coverPositionX: trip.coverPositionX ?? 50,
+      coverPositionY: trip.coverPositionY ?? 50,
+      coverZoom: trip.coverZoom ?? 1,
+    })),
     tripDays: state?.tripDays ?? seedTravelState.tripDays,
     tripDayItems: state?.tripDayItems ?? seedTravelState.tripDayItems,
     photos: state?.photos ?? seedTravelState.photos,
@@ -187,6 +208,90 @@ function withDates<T extends object>(input: T) {
   return { ...input, id: crypto.randomUUID(), createdAt: now, updatedAt: now };
 }
 
+function syncLocalCountryVisits(state: TravelState): TravelState {
+  const countries = [...state.countries];
+  const countryByCode = new Map(
+    countries
+      .filter((country) => country.countryCode)
+      .map((country) => [country.countryCode!.toUpperCase(), country]),
+  );
+
+  for (const trip of state.trips) {
+    for (const linkedCountry of trip.countries) {
+      const code = linkedCountry.countryCode.toUpperCase();
+      if (countryByCode.has(code)) continue;
+      const now = getIsoNow();
+      const country: Country = {
+        id: crypto.randomUUID(),
+        userId: null,
+        name: linkedCountry.countryName,
+        countryCode: code,
+        continent: linkedCountry.continent,
+        status: "planned",
+        manualStatus: "planned",
+        completedTripCount: 0,
+        personalRating: 7,
+        shortNote: "",
+        longNote: "",
+        bestTravelMonths: "",
+        visibility: "private",
+        latitude: linkedCountry.latitude ?? null,
+        longitude: linkedCountry.longitude ?? null,
+        coverPhotoUrl: null,
+        visitedFrom: null,
+        visitedTo: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      countries.push(country);
+      countryByCode.set(code, country);
+    }
+  }
+
+  const syncedCountries = countries.map((country) => {
+    const code = country.countryCode?.toUpperCase();
+    const completedTripCount = code
+      ? state.trips.filter(
+          (trip) =>
+            trip.status === "completed" &&
+            trip.countries.some((item) => item.countryCode.toUpperCase() === code),
+        ).length
+      : 0;
+    const manualStatus = country.manualStatus ?? country.status;
+    return {
+      ...country,
+      manualStatus,
+      completedTripCount,
+      status:
+        completedTripCount > 0 || manualStatus === "visited"
+          ? ("visited" as const)
+          : manualStatus,
+    };
+  });
+
+  const idsByCode = new Map(
+    syncedCountries
+      .filter((country) => country.countryCode)
+      .map((country) => [country.countryCode!.toUpperCase(), country.id]),
+  );
+
+  return {
+    ...state,
+    countries: syncedCountries,
+    trips: state.trips.map((trip) => ({
+      ...trip,
+      countryId:
+        trip.countries.length === 1
+          ? idsByCode.get(trip.countries[0].countryCode.toUpperCase()) ?? trip.countryId
+          : null,
+      countries: trip.countries.map((country) => ({
+        ...country,
+        countryId: idsByCode.get(country.countryCode.toUpperCase()) ?? country.countryId,
+      })),
+    })),
+  };
+}
+
 function inferProvider(url: string) {
   try {
     const host = new URL(url).hostname.replace("www.", "");
@@ -204,6 +309,7 @@ function enrichCountryInput(input: CountryFormInput): CountryFormInput {
   const coordinates = getCoordinatesForCountry(input.name);
   return {
     ...input,
+    status: input.visitedFrom ? "visited" : input.status,
     countryCode: input.countryCode || coordinates?.countryCode || null,
     latitude: input.latitude ?? coordinates?.latitude ?? null,
     longitude: input.longitude ?? coordinates?.longitude ?? null,
@@ -226,6 +332,15 @@ async function requireSupabaseUser() {
   }
 
   return user;
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Das Coverbild konnte nicht gelesen werden."));
+    reader.readAsDataURL(file);
+  });
 }
 
 export function CountryProvider({ children }: { children: ReactNode }) {
@@ -319,6 +434,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       countriesResult,
       placesResult,
       tripsResult,
+      tripCountriesResult,
       tripDaysResult,
       tripDayItemsResult,
       photosResult,
@@ -330,6 +446,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       supabase.from("countries").select("*").order("updated_at", { ascending: false }),
       supabase.from("places").select("*").order("updated_at", { ascending: false }),
       supabase.from("trips").select("*").order("updated_at", { ascending: false }),
+      supabase.from("trip_countries").select("*"),
       supabase.from("trip_days").select("*").order("day_number", { ascending: true }),
       supabase
         .from("trip_day_items")
@@ -352,6 +469,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       countriesResult.error ??
       placesResult.error ??
       tripsResult.error ??
+      tripCountriesResult.error ??
       tripDaysResult.error ??
       tripDayItemsResult.error ??
       photosResult.error ??
@@ -367,10 +485,26 @@ export function CountryProvider({ children }: { children: ReactNode }) {
         `Supabase ist verbunden, aber die Daten konnten nicht geladen werden: ${requestError.message}. Prüfe schema.sql und RLS-Policies.`,
       );
     } else {
+      const tripCountries = (tripCountriesResult.data ?? []).map(mapTripCountryFromRow);
+      const mappedTrips = (tripsResult.data ?? []).map((row) =>
+        mapTripFromRow(
+          row,
+          tripCountries.filter((country) => country.tripId === row.id),
+        ),
+      );
+      const tripsWithCovers = await Promise.all(
+        mappedTrips.map(async (trip) => {
+          if (!trip.coverStoragePath) return trip;
+          const { data } = await supabase!.storage
+            .from("travel-photos")
+            .createSignedUrl(trip.coverStoragePath, 60 * 60);
+          return { ...trip, coverPhotoUrl: data?.signedUrl ?? trip.coverPhotoUrl };
+        }),
+      );
       setState({
         countries: (countriesResult.data ?? []).map(mapCountryFromRow),
         places: (placesResult.data ?? []).map(mapPlaceFromRow),
-        trips: (tripsResult.data ?? []).map(mapTripFromRow),
+        trips: tripsWithCovers,
         tripDays: (tripDaysResult.data ?? []).map(mapTripDayFromRow),
         tripDayItems: (tripDayItemsResult.data ?? []).map(mapTripDayItemFromRow),
         photos: (photosResult.data ?? []).map(mapPhotoFromRow),
@@ -438,6 +572,15 @@ export function CountryProvider({ children }: { children: ReactNode }) {
   const createCountry = useCallback(
     async (rawInput: CountryFormInput) => {
       const input = enrichCountryInput(rawInput);
+      const duplicate = state.countries.find(
+        (country) =>
+          country.countryCode &&
+          input.countryCode &&
+          country.countryCode.toUpperCase() === input.countryCode.toUpperCase(),
+      );
+      if (duplicate) {
+        throw new Error(`${duplicate.name} ist bereits in deiner Länderliste.`);
+      }
 
       if (supabase && dataSource === "supabase") {
         await requireSupabaseUser();
@@ -454,11 +597,16 @@ export function CountryProvider({ children }: { children: ReactNode }) {
         return country;
       }
 
-      const country = withDates({ ...input, userId: null }) as Country;
+      const country = withDates({
+        ...input,
+        userId: null,
+        manualStatus: input.status,
+        completedTripCount: 0,
+      }) as Country;
       persist((current) => ({ ...current, countries: [country, ...current.countries] }));
       return country;
     },
-    [dataSource, persist],
+    [dataSource, persist, state.countries],
   );
 
   const updateCountry = useCallback(
@@ -487,7 +635,16 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       const existing = state.countries.find((country) => country.id === id);
       if (!existing) throw new Error("Land wurde nicht gefunden.");
 
-      const updatedCountry = { ...existing, ...input, updatedAt: getIsoNow() };
+      const updatedCountry = {
+        ...existing,
+        ...input,
+        manualStatus: input.status,
+        status:
+          existing.completedTripCount > 0 || input.status === "visited"
+            ? ("visited" as const)
+            : input.status,
+        updatedAt: getIsoNow(),
+      };
       persist((current) => ({
         ...current,
         countries: current.countries.map((country) =>
@@ -601,9 +758,14 @@ export function CountryProvider({ children }: { children: ReactNode }) {
   );
 
   const createTrip = useCallback(
-    async (input: TripFormInput) => {
+    async (rawInput: TripFormInput) => {
+      const input = {
+        ...rawInput,
+        visibility:
+          rawInput.status === "completed" ? rawInput.visibility : ("private" as const),
+      };
       if (supabase && dataSource === "supabase") {
-        await requireSupabaseUser();
+        const user = await requireSupabaseUser();
         const { data, error: requestError } = await supabase
           .from("trips")
           .insert(mapTripToRow(input))
@@ -612,22 +774,43 @@ export function CountryProvider({ children }: { children: ReactNode }) {
 
         if (requestError) throw new Error(requestError.message);
 
-        const trip = mapTripFromRow(data);
+        if (input.countries.length) {
+          const { error: countriesError } = await supabase
+            .from("trip_countries")
+            .insert(
+              input.countries.map((country) =>
+                mapTripCountryToRow(country, data.id, user.id),
+              ),
+            );
+          if (countriesError) {
+            await supabase.from("trips").delete().eq("id", data.id);
+            throw new Error(countriesError.message);
+          }
+        }
+
+        const trip = mapTripFromRow(data, input.countries);
         persist((current) => ({ ...current, trips: [trip, ...current.trips] }));
         return trip;
       }
 
       const trip = withDates({ ...input, userId: null }) as Trip;
-      persist((current) => ({ ...current, trips: [trip, ...current.trips] }));
+      persist((current) =>
+        syncLocalCountryVisits({ ...current, trips: [trip, ...current.trips] }),
+      );
       return trip;
     },
     [dataSource, persist],
   );
 
   const updateTrip = useCallback(
-    async (id: string, input: TripFormInput) => {
+    async (id: string, rawInput: TripFormInput) => {
+      const input = {
+        ...rawInput,
+        visibility:
+          rawInput.status === "completed" ? rawInput.visibility : ("private" as const),
+      };
       if (supabase && dataSource === "supabase") {
-        await requireSupabaseUser();
+        const user = await requireSupabaseUser();
         const { data, error: requestError } = await supabase
           .from("trips")
           .update(mapTripToRow(input))
@@ -637,7 +820,34 @@ export function CountryProvider({ children }: { children: ReactNode }) {
 
         if (requestError) throw new Error(requestError.message);
 
-        const trip = mapTripFromRow(data);
+        const previous = state.trips.find((trip) => trip.id === id)?.countries ?? [];
+        const { error: deleteCountriesError } = await supabase
+          .from("trip_countries")
+          .delete()
+          .eq("trip_id", id);
+        if (deleteCountriesError) throw new Error(deleteCountriesError.message);
+
+        if (input.countries.length) {
+          const { error: insertCountriesError } = await supabase
+            .from("trip_countries")
+            .insert(
+              input.countries.map((country) =>
+                mapTripCountryToRow(country, id, user.id),
+              ),
+            );
+          if (insertCountriesError) {
+            if (previous.length) {
+              await supabase.from("trip_countries").insert(
+                previous.map((country) =>
+                  mapTripCountryToRow(country, id, user.id),
+                ),
+              );
+            }
+            throw new Error(insertCountriesError.message);
+          }
+        }
+
+        const trip = mapTripFromRow(data, input.countries);
         persist((current) => ({
           ...current,
           trips: current.trips.map((item) => (item.id === id ? trip : item)),
@@ -646,12 +856,14 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       }
 
       const existing = state.trips.find((trip) => trip.id === id);
-      if (!existing) throw new Error("Trip wurde nicht gefunden.");
+      if (!existing) throw new Error("Reise wurde nicht gefunden.");
       const trip = { ...existing, ...input, updatedAt: getIsoNow() };
-      persist((current) => ({
-        ...current,
-        trips: current.trips.map((item) => (item.id === id ? trip : item)),
-      }));
+      persist((current) =>
+        syncLocalCountryVisits({
+          ...current,
+          trips: current.trips.map((item) => (item.id === id ? trip : item)),
+        }),
+      );
       return trip;
     },
     [dataSource, persist, state.trips],
@@ -659,6 +871,7 @@ export function CountryProvider({ children }: { children: ReactNode }) {
 
   const deleteTrip = useCallback(
     async (id: string) => {
+      const existing = state.trips.find((trip) => trip.id === id);
       if (supabase && dataSource === "supabase") {
         await requireSupabaseUser();
         const { error: requestError } = await supabase
@@ -666,13 +879,18 @@ export function CountryProvider({ children }: { children: ReactNode }) {
           .delete()
           .eq("id", id);
         if (requestError) throw new Error(requestError.message);
+        if (existing?.coverStoragePath) {
+          await supabase.storage
+            .from("travel-photos")
+            .remove([existing.coverStoragePath]);
+        }
       }
 
       persist((current) => {
         const dayIds = current.tripDays
           .filter((day) => day.tripId === id)
           .map((day) => day.id);
-        return {
+        return syncLocalCountryVisits({
           ...current,
           trips: current.trips.filter((trip) => trip.id !== id),
           tripDays: current.tripDays.filter((day) => day.tripId !== id),
@@ -681,10 +899,139 @@ export function CountryProvider({ children }: { children: ReactNode }) {
           ),
           packingItems: current.packingItems.filter((item) => item.tripId !== id),
           savedLinks: current.savedLinks.filter((link) => link.tripId !== id),
-        };
+        });
       });
     },
-    [dataSource, persist],
+    [dataSource, persist, state.trips],
+  );
+
+  const uploadTripCover = useCallback(
+    async (
+      tripId: string,
+      file: File,
+      crop: { positionX: number; positionY: number; zoom: number },
+      fallbackTrip?: Trip,
+    ) => {
+      const existing = state.trips.find((trip) => trip.id === tripId) ?? fallbackTrip;
+      if (!existing) throw new Error("Reise wurde nicht gefunden.");
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+        throw new Error("Bitte verwende ein JPG-, PNG- oder WebP-Bild.");
+      }
+      if (file.size > 8 * 1024 * 1024) {
+        throw new Error("Das Coverbild darf maximal 8 MB groß sein.");
+      }
+
+      if (supabase && dataSource === "supabase") {
+        const user = await requireSupabaseUser();
+        const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+        const storagePath = `${user.id}/${tripId}/covers/${crypto.randomUUID()}.${extension}`;
+        const { error: uploadError } = await supabase.storage
+          .from("travel-photos")
+          .upload(storagePath, file, { contentType: file.type, upsert: false });
+        if (uploadError) {
+          throw new Error(`Coverbild konnte nicht hochgeladen werden: ${uploadError.message}`);
+        }
+
+        const { data, error: updateError } = await supabase
+          .from("trips")
+          .update({
+            cover_photo_url: null,
+            cover_storage_path: storagePath,
+            cover_position_x: crop.positionX,
+            cover_position_y: crop.positionY,
+            cover_zoom: crop.zoom,
+          })
+          .eq("id", tripId)
+          .select("*")
+          .single();
+        if (updateError) {
+          await supabase.storage.from("travel-photos").remove([storagePath]);
+          throw new Error(`Coverbild konnte nicht gespeichert werden: ${updateError.message}`);
+        }
+
+        const { data: signed } = await supabase.storage
+          .from("travel-photos")
+          .createSignedUrl(storagePath, 60 * 60);
+        const trip = {
+          ...mapTripFromRow(data, existing.countries),
+          coverPhotoUrl: signed?.signedUrl ?? null,
+        };
+        persist((current) => ({
+          ...current,
+          trips: current.trips.map((item) => (item.id === tripId ? trip : item)),
+        }));
+
+        if (
+          existing.coverStoragePath &&
+          existing.coverStoragePath !== storagePath
+        ) {
+          await supabase.storage
+            .from("travel-photos")
+            .remove([existing.coverStoragePath]);
+        }
+        return trip;
+      }
+
+      const coverPhotoUrl = await readFileAsDataUrl(file);
+      const trip = {
+        ...existing,
+        coverPhotoUrl,
+        coverStoragePath: `demo/${tripId}/cover`,
+        coverPositionX: crop.positionX,
+        coverPositionY: crop.positionY,
+        coverZoom: crop.zoom,
+        updatedAt: getIsoNow(),
+      };
+      persist((current) => ({
+        ...current,
+        trips: current.trips.map((item) => (item.id === tripId ? trip : item)),
+      }));
+      return trip;
+    },
+    [dataSource, persist, state.trips],
+  );
+
+  const deleteTripCover = useCallback(
+    async (tripId: string) => {
+      const existing = state.trips.find((trip) => trip.id === tripId);
+      if (!existing) throw new Error("Reise wurde nicht gefunden.");
+
+      if (supabase && dataSource === "supabase") {
+        await requireSupabaseUser();
+        const { data, error: updateError } = await supabase
+          .from("trips")
+          .update({ cover_photo_url: null, cover_storage_path: null })
+          .eq("id", tripId)
+          .select("*")
+          .single();
+        if (updateError) throw new Error(updateError.message);
+
+        const trip = mapTripFromRow(data, existing.countries);
+        persist((current) => ({
+          ...current,
+          trips: current.trips.map((item) => (item.id === tripId ? trip : item)),
+        }));
+        if (existing.coverStoragePath) {
+          await supabase.storage
+            .from("travel-photos")
+            .remove([existing.coverStoragePath]);
+        }
+        return trip;
+      }
+
+      const trip = {
+        ...existing,
+        coverPhotoUrl: null,
+        coverStoragePath: null,
+        updatedAt: getIsoNow(),
+      };
+      persist((current) => ({
+        ...current,
+        trips: current.trips.map((item) => (item.id === tripId ? trip : item)),
+      }));
+      return trip;
+    },
+    [dataSource, persist, state.trips],
   );
 
   const createTripDay = useCallback(
@@ -1039,6 +1386,8 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       createTrip,
       updateTrip,
       deleteTrip,
+      uploadTripCover,
+      deleteTripCover,
       createTripDay,
       updateTripDay,
       createTripDayItem,
@@ -1073,6 +1422,8 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       createTrip,
       updateTrip,
       deleteTrip,
+      uploadTripCover,
+      deleteTripCover,
       createTripDay,
       updateTripDay,
       createTripDayItem,

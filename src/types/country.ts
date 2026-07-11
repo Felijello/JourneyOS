@@ -47,6 +47,8 @@ export type Country = {
   countryCode?: string | null;
   continent: Continent;
   status: CountryStatus;
+  manualStatus: CountryStatus;
+  completedTripCount: number;
   personalRating: number;
   shortNote: string;
   longNote: string;
@@ -63,7 +65,7 @@ export type Country = {
 
 export type CountryFormInput = Omit<
   Country,
-  "id" | "userId" | "createdAt" | "updatedAt"
+  "id" | "userId" | "manualStatus" | "completedTripCount" | "createdAt" | "updatedAt"
 >;
 
 export type Place = {
@@ -101,15 +103,39 @@ export type Trip = {
   travelStyle: string;
   visibility: CountryVisibility;
   destinationName: string;
+  destinationCity?: string | null;
+  destinationRegion?: string | null;
+  destinationCountryName?: string | null;
+  destinationCountryCode?: string | null;
+  destinationLatitude?: number | null;
+  destinationLongitude?: number | null;
+  destinationExternalId?: string | null;
   description: string;
   highlights: string[];
   coverPhotoUrl?: string | null;
+  coverStoragePath?: string | null;
+  coverPositionX: number;
+  coverPositionY: number;
+  coverZoom: number;
+  countries: TripCountry[];
   notes: string;
   createdAt: string;
   updatedAt: string;
 };
 
 export type TripFormInput = Omit<Trip, "id" | "userId" | "createdAt" | "updatedAt">;
+
+export type TripCountry = {
+  tripId?: string;
+  userId?: string | null;
+  countryId?: string | null;
+  countryCode: string;
+  countryName: string;
+  continent: Continent;
+  latitude?: number | null;
+  longitude?: number | null;
+  source: "destination" | "manual" | "legacy";
+};
 
 export type TripDay = {
   id: string;

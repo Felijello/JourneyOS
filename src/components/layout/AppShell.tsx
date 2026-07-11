@@ -31,7 +31,7 @@ const navigation = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/discover", label: "Entdecken", icon: UsersRound },
   { href: "/countries", label: "Länder", icon: Globe2 },
-  { href: "/trips", label: "Trips", icon: CalendarDays },
+  { href: "/trips", label: "Reisen", icon: CalendarDays },
   { href: "/map", label: "Karte", icon: Map },
   { href: "/profile", label: "Profil", icon: UserRound },
   { href: "/settings", label: "Einstellungen", icon: Settings },

@@ -35,7 +35,7 @@ export function TripsPage() {
             Reiseplanung
           </p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-            Trips
+            Reisen
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
             Plane Reisen grob, speichere Budgets, Links, Tagesideen und
@@ -44,13 +44,13 @@ export function TripsPage() {
         </div>
         <LinkButton href="/trips/new">
           <Plus aria-hidden="true" size={17} />
-          Trip hinzufügen
+          Reise hinzufügen
         </LinkButton>
       </section>
 
       <section className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-[1fr_220px]">
         <label className="relative block">
-          <span className="sr-only">Trip suchen</span>
+          <span className="sr-only">Reise suchen</span>
           <Search
             aria-hidden="true"
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -59,7 +59,7 @@ export function TripsPage() {
           <input
             className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Nach Trip suchen..."
+            placeholder="Nach Reise suchen..."
             value={query}
           />
         </label>
@@ -90,9 +90,9 @@ export function TripsPage() {
       ) : (
         <EmptyState
           actionHref="/trips/new"
-          actionLabel="Trip anlegen"
-          description="Lege einen Trip an und sammle erste Tage, Links, Packliste und Budget."
-          title="Noch keine Trips in dieser Ansicht"
+          actionLabel="Reise anlegen"
+          description="Lege eine Reise an und sammle erste Tage, Links, Packliste und Budget."
+          title="Noch keine Reisen in dieser Ansicht"
         />
       )}
     </div>

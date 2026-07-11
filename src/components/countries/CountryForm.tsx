@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, LockKeyhole, Save, Star } from "lucide-react";
+import { CountryAutocomplete } from "@/components/travel/CountryAutocomplete";
 import { Button } from "@/components/ui/Button";
 import {
   continentLabels,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/country-options";
 import { cn } from "@/lib/utils";
 import type { Country, CountryFormInput, CountryStatus } from "@/types/country";
+import type { CountrySuggestion } from "@/types/location";
 
 const defaultInput: CountryFormInput = {
   name: "",
@@ -73,6 +75,8 @@ export function CountryForm({
 }) {
   const router = useRouter();
   const [input, setInput] = useState<CountryFormInput>(() => toInput(country));
+  const [countryQuery, setCountryQuery] = useState(country?.name ?? "");
+  const [countrySelected, setCountrySelected] = useState(Boolean(country?.countryCode));
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const ratingLabel = useMemo(() => `${input.personalRating}/10`, [input.personalRating]);
@@ -81,8 +85,8 @@ export function CountryForm({
     event.preventDefault();
     setFormError(null);
 
-    if (!input.name.trim()) {
-      setFormError("Wie heißt das Land?");
+    if (!countrySelected || !input.countryCode) {
+      setFormError("Bitte wähle ein Land aus den Vorschlägen aus.");
       return;
     }
     if (input.name.trim().length > 100) {
@@ -136,18 +140,27 @@ export function CountryForm({
         </p>
       ) : null}
 
-      <label className="block">
-        <span className="mb-2 block text-sm font-semibold text-slate-700">Welches Land?</span>
-        <input
-          autoFocus={!country}
-          className={fieldClass}
-          maxLength={100}
-          onChange={(event) => setInput({ ...input, name: event.target.value })}
-          placeholder="z. B. Japan"
-          required
-          value={input.name}
-        />
-      </label>
+      <CountryAutocomplete
+        isSelection={countrySelected}
+        label="Welches Land?"
+        onQueryChange={(query) => {
+          setCountryQuery(query);
+          if (query !== input.name) setCountrySelected(false);
+        }}
+        onSelect={(selected: CountrySuggestion) => {
+          setCountryQuery(selected.name);
+          setCountrySelected(true);
+          setInput({
+            ...input,
+            name: selected.name,
+            countryCode: selected.countryCode,
+            continent: selected.continent,
+            latitude: selected.latitude ?? null,
+            longitude: selected.longitude ?? null,
+          });
+        }}
+        query={countryQuery}
+      />
 
       <fieldset>
         <legend className="mb-3 text-sm font-semibold text-slate-700">Wo steht es für dich?</legend>
@@ -220,12 +233,7 @@ export function CountryForm({
               <span className="mb-2 block text-sm font-semibold text-slate-700">Kontinent</span>
               <select
                 className={fieldClass}
-                onChange={(event) =>
-                  setInput({
-                    ...input,
-                    continent: event.target.value as CountryFormInput["continent"],
-                  })
-                }
+                disabled
                 value={input.continent}
               >
                 {continents.map((continent) => (
@@ -305,8 +313,8 @@ export function CountryForm({
               <input
                 className={fieldClass}
                 maxLength={2}
-                onChange={(event) => setInput({ ...input, countryCode: event.target.value.toUpperCase() })}
                 placeholder="JP"
+                readOnly
                 value={input.countryCode ?? ""}
               />
             </label>
@@ -329,10 +337,8 @@ export function CountryForm({
                 className={fieldClass}
                 max={90}
                 min={-90}
-                onChange={(event) =>
-                  setInput({ ...input, latitude: event.target.value ? Number(event.target.value) : null })
-                }
                 placeholder="Wird oft automatisch erkannt"
+                readOnly
                 step="any"
                 type="number"
                 value={input.latitude ?? ""}
@@ -344,10 +350,8 @@ export function CountryForm({
                 className={fieldClass}
                 max={180}
                 min={-180}
-                onChange={(event) =>
-                  setInput({ ...input, longitude: event.target.value ? Number(event.target.value) : null })
-                }
                 placeholder="Wird oft automatisch erkannt"
+                readOnly
                 step="any"
                 type="number"
                 value={input.longitude ?? ""}
