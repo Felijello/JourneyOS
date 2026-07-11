@@ -42,6 +42,7 @@ export function AuthPanel() {
   const [isError, setIsError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
   useEffect(() => {
     if (!supabase) return;
@@ -191,6 +192,31 @@ export function AuthPanel() {
     }
   }
 
+  async function handleGoogleSignIn() {
+    if (!supabase) return;
+
+    setIsGoogleSubmitting(true);
+    setIsError(false);
+    setMessage(null);
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: authCallbackUrl },
+      });
+
+      if (error) {
+        setIsError(true);
+        setMessage(getFriendlyAuthError(error.message));
+        setIsGoogleSubmitting(false);
+      }
+    } catch {
+      setIsError(true);
+      setMessage("Google Login konnte gerade nicht gestartet werden.");
+      setIsGoogleSubmitting(false);
+    }
+  }
+
   async function handleSignOut() {
     if (!supabase) return;
     await supabase.auth.signOut();
@@ -282,7 +308,32 @@ export function AuthPanel() {
         ))}
       </div>
 
-      <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+      {mode === "login" || mode === "register" ? (
+        <>
+          <Button
+            className="mt-5 w-full"
+            disabled={isGoogleSubmitting || isSubmitting}
+            onClick={handleGoogleSignIn}
+            variant="secondary"
+          >
+            <GoogleIcon />
+            {isGoogleSubmitting ? "Google wird geöffnet..." : "Mit Google fortfahren"}
+          </Button>
+          <div className="my-5 flex items-center gap-3" aria-hidden="true">
+            <span className="h-px flex-1 bg-slate-200" />
+            <span className="text-xs font-semibold text-slate-400">ODER MIT E-MAIL</span>
+            <span className="h-px flex-1 bg-slate-200" />
+          </div>
+        </>
+      ) : null}
+
+      <form
+        className={cn(
+          "space-y-4",
+          mode === "login" || mode === "register" ? "mt-0" : "mt-6",
+        )}
+        onSubmit={handleSubmit}
+      >
         <label className="block">
           <span className="mb-2 block text-sm font-semibold text-slate-700">E-Mail</span>
           <input
@@ -408,5 +459,31 @@ function getFriendlyAuthError(message: string) {
   if (normalized.includes("rate limit")) {
     return "Zu viele Versuche. Warte bitte kurz und probiere es dann erneut.";
   }
+  if (normalized.includes("provider") && normalized.includes("enabled")) {
+    return "Google Login ist in Supabase noch nicht aktiviert.";
+  }
   return "Das hat gerade nicht geklappt. Bitte versuche es noch einmal.";
+}
+
+function GoogleIcon() {
+  return (
+    <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24">
+      <path
+        d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.4a4.7 4.7 0 0 1-2 3v2.6h3.3c1.9-1.8 2.9-4.4 2.9-7.5Z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12 22c2.7 0 5-.9 6.7-2.3l-3.3-2.6c-.9.6-2 1-3.4 1a5.9 5.9 0 0 1-5.5-4.1H3.1v2.6A10.1 10.1 0 0 0 12 22Z"
+        fill="#34A853"
+      />
+      <path
+        d="M6.5 14a6 6 0 0 1 0-3.9V7.4H3.1a10 10 0 0 0 0 9.2L6.5 14Z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12 5.9c1.5 0 2.8.5 3.9 1.5l2.9-2.9A9.8 9.8 0 0 0 3.1 7.4l3.4 2.7A5.9 5.9 0 0 1 12 5.9Z"
+        fill="#EA4335"
+      />
+    </svg>
+  );
 }

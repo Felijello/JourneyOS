@@ -74,6 +74,19 @@ Sicherheit:
 8. `.env.local` mit Supabase URL und Anon/Publishable Key füllen.
 9. App neu starten und unter `/login` anmelden oder registrieren.
 
+### Google Login
+
+1. In Google Cloud einen OAuth-Client vom Typ `Web application` erstellen.
+2. Als autorisierte Redirect-URI eintragen:
+   - `https://cfuxasczjyvktqkaqixz.supabase.co/auth/v1/callback`
+3. In Supabase unter Authentication -> Sign In / Providers -> Google den
+   Client ID und das Client Secret eintragen und den Provider aktivieren.
+4. Einen neuen Inkognito-Tab öffnen und `Mit Google fortfahren` testen.
+
+Google Client ID und Client Secret gehören ausschließlich in die
+Supabase-Provider-Einstellungen. Dafür sind keine zusätzlichen JourneyOS- oder
+Vercel-Umgebungsvariablen erforderlich.
+
 Unter Authentication -> Emails müssen die Buttons der Templates "Confirm signup"
 und "Reset password" auf `{{ .ConfirmationURL }}` zeigen. Ein direkter Link auf
 `{{ .SiteURL }}` bestätigt zwar den Token, ignoriert aber den gewünschten Callback.
@@ -118,6 +131,7 @@ Supabase:
 
 - Einstellungen öffnen
 - Magic Link Login ausführen
+- Google Login ausführen
 - Land/Ort/Trip anlegen
 - Seite neu laden und prüfen, ob Daten bleiben
 
@@ -179,6 +193,7 @@ Danach Production neu deployen.
 - Routing fehlt: `OPENROUTESERVICE_API_KEY` serverseitig setzen und neu deployen.
 - Karte lädt ohne MapTiler: `NEXT_PUBLIC_MAPTILER_KEY` setzen oder OSM-Fallback nutzen.
 - Auth Redirect klappt nicht: Supabase Redirect URL auf lokale und Vercel-Domain setzen.
+- Google Login meldet Provider-Fehler: Google unter Authentication -> Sign In / Providers aktivieren und die Supabase Callback-URL im Google OAuth-Client freigeben.
 - Registrierungsmail fehlt: Spam prüfen, im Login `Bestätigung erneut senden` nutzen und unter Supabase Authentication -> Logs nachsehen. Bei bestehenden Konten stattdessen `Passwort vergessen?` verwenden.
 - Für zuverlässige Produktionsmails unter Authentication -> SMTP Settings einen eigenen Mail-Anbieter konfigurieren.
 
@@ -198,6 +213,7 @@ Danach Production neu deployen.
 - Route zwischen zwei Orten erstellen
 - AI-Buttons testen
 - `/settings` Integrationsstatus prüfen
+- Google Login und Rückleitung zum Dashboard testen
 
 ## Roadmap
 
