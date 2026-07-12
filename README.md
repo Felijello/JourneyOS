@@ -62,11 +62,13 @@ NEXT_PUBLIC_SITE_URL=https://journey-os-wine.vercel.app
 OPENROUTESERVICE_API_KEY=
 NEXT_PUBLIC_MAPTILER_KEY=
 GEMINI_API_KEY=
+RESEND_API_KEY=
 ```
 
 Sicherheit:
 
 - `GEMINI_API_KEY` ist nur serverseitig.
+- `RESEND_API_KEY` ist nur serverseitig. Für Supabase-Auth-Mails muss Resend zusätzlich unter Authentication > Emails > SMTP Settings verbunden werden.
 - `OPENROUTESERVICE_API_KEY` läuft über `/api/routing/directions`.
 - Supabase URL/Anon Key und MapTiler Key dürfen clientseitig genutzt werden.
 - `.env.local`, `.env`, `.vercel`, `.next` und `node_modules` werden nicht committed.

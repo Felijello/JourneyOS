@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarDays, Check, ChevronDown, Globe2, ImagePlus, LockKeyhole, Save, X } from "lucide-react";
 import { CountryAutocomplete } from "@/components/travel/CountryAutocomplete";
@@ -87,6 +87,36 @@ export function TripForm({
   const [pendingPhotos, setPendingPhotos] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState<{ base: string; rate: number } | null>(null);
+
+  useEffect(() => {
+    const currency = input.currency.trim().toUpperCase();
+    if (input.budgetEstimate == null || input.budgetEstimate <= 0 || currency.length !== 3 || currency === "EUR") return;
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/exchange/rate?base=${currency}&quote=EUR`, {
+          signal: controller.signal,
+        });
+        const payload = (await response.json()) as { rate?: number };
+        if (response.ok && typeof payload.rate === "number") {
+          setExchangeRate({ base: currency, rate: payload.rate });
+        }
+      } catch {
+        // A missing reference rate should never block saving a journey.
+      }
+    }, 350);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [input.budgetEstimate, input.currency]);
+
+  const normalizedCurrency = input.currency.trim().toUpperCase();
+  const budgetInEuro = input.budgetEstimate != null && exchangeRate?.base === normalizedCurrency
+    ? input.budgetEstimate * exchangeRate.rate
+    : null;
 
   const canPublish = input.status === "completed";
   const primaryLabel = input.visibility === "public" && canPublish
@@ -263,7 +293,7 @@ export function TripForm({
 
       <section className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold text-slate-800">Galerie</p><p className="mt-1 text-xs text-slate-500">Bis zu 12 Reisefotos, jeweils maximal 6 MB.</p></div><label className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"><ImagePlus aria-hidden="true" size={17} />Fotos auswählen<input accept="image/jpeg,image/png,image/webp" className="sr-only" multiple onChange={(event) => { const existingCount = trip ? travelPhotos.filter((photo) => photo.tripId === trip.id).length : 0; setPendingPhotos(Array.from(event.target.files ?? []).slice(0, 12 - existingCount)); }} type="file" /></label></div>{pendingPhotos.length ? <p className="mt-3 text-sm font-medium text-blue-700">{pendingPhotos.length} {pendingPhotos.length === 1 ? "Foto" : "Fotos"} ausgewählt</p> : null}</section>
 
-      <details className="group rounded-lg border border-slate-200 bg-slate-50/70"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 text-sm font-semibold text-slate-700">Budget und weitere Details<ChevronDown aria-hidden="true" className="transition group-open:rotate-180" size={18} /></summary><div className="grid gap-4 border-t border-slate-200 p-4 sm:grid-cols-3"><label><span className="mb-2 block text-sm font-semibold text-slate-700">Budget</span><input className={fieldClass} min={0} onChange={(event) => setInput({ ...input, budgetEstimate: event.target.value ? Number(event.target.value) : null })} step="0.01" type="number" value={input.budgetEstimate ?? ""} /></label><label><span className="mb-2 block text-sm font-semibold text-slate-700">Währung</span><input className={fieldClass} maxLength={3} onChange={(event) => setInput({ ...input, currency: event.target.value.toUpperCase() })} value={input.currency} /></label><label><span className="mb-2 block text-sm font-semibold text-slate-700">Reisestil</span><input className={fieldClass} onChange={(event) => setInput({ ...input, travelStyle: event.target.value })} placeholder="Roadtrip, Food, Strand" value={input.travelStyle} /></label></div></details>
+      <details className="group rounded-lg border border-slate-200 bg-slate-50/70"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 text-sm font-semibold text-slate-700">Budget und weitere Details<ChevronDown aria-hidden="true" className="transition group-open:rotate-180" size={18} /></summary><div className="grid gap-4 border-t border-slate-200 p-4 sm:grid-cols-3"><label><span className="mb-2 block text-sm font-semibold text-slate-700">Budget</span><input className={fieldClass} min={0} onChange={(event) => setInput({ ...input, budgetEstimate: event.target.value ? Number(event.target.value) : null })} step="0.01" type="number" value={input.budgetEstimate ?? ""} />{budgetInEuro != null && input.currency.toUpperCase() !== "EUR" ? <span className="mt-1.5 block text-xs text-slate-500">Etwa {new Intl.NumberFormat("de-AT", { style: "currency", currency: "EUR" }).format(budgetInEuro)} nach aktuellem Referenzkurs.</span> : null}</label><label><span className="mb-2 block text-sm font-semibold text-slate-700">Währung</span><input className={fieldClass} maxLength={3} onChange={(event) => setInput({ ...input, currency: event.target.value.toUpperCase() })} value={input.currency} /></label><label><span className="mb-2 block text-sm font-semibold text-slate-700">Reisestil</span><input className={fieldClass} onChange={(event) => setInput({ ...input, travelStyle: event.target.value })} placeholder="Roadtrip, Food, Strand" value={input.travelStyle} /></label></div></details>
 
       <fieldset><legend className="text-sm font-semibold text-slate-900">Sichtbarkeit</legend><div className="mt-3 grid gap-3 sm:grid-cols-2"><label className={`cursor-pointer rounded-lg border p-4 transition ${input.visibility === "private" ? "border-blue-500 bg-blue-50 ring-2 ring-blue-100" : "border-slate-200 bg-white"}`}><input checked={input.visibility === "private"} className="sr-only" name="visibility" onChange={() => setInput({ ...input, visibility: "private" })} type="radio" /><span className="flex items-center gap-2 font-semibold text-slate-900"><LockKeyhole size={18} />Privat{input.visibility === "private" ? <Check className="ml-auto text-blue-600" size={18} /> : null}</span><span className="mt-2 block text-xs leading-5 text-slate-500">Nur du kannst diese Reise und deine Planung sehen.</span></label><label aria-disabled={!canPublish} className={`rounded-lg border p-4 transition ${!canPublish ? "cursor-not-allowed border-slate-200 bg-slate-100 opacity-70" : "cursor-pointer"} ${input.visibility === "public" ? "border-blue-500 bg-blue-50 ring-2 ring-blue-100" : "border-slate-200 bg-white"}`}><input checked={input.visibility === "public"} className="sr-only" disabled={!canPublish} name="visibility" onChange={() => setInput({ ...input, visibility: "public" })} type="radio" /><span className="flex items-center gap-2 font-semibold text-slate-900"><Globe2 size={18} />Öffentlich{input.visibility === "public" ? <Check className="ml-auto text-blue-600" size={18} /> : null}</span><span className="mt-2 block text-xs leading-5 text-slate-500">Erscheint auf deinem Profil und unter Entdecken.</span></label></div>{!canPublish ? <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-800">Nur abgeschlossene Reisen können veröffentlicht werden. Dadurch bleiben zukünftige Reisepläne und Aufenthaltsdaten geschützt.</p> : null}</fieldset>
 
