@@ -874,15 +874,29 @@ export function CountryProvider({ children }: { children: ReactNode }) {
       const existing = state.trips.find((trip) => trip.id === id);
       if (supabase && dataSource === "supabase") {
         await requireSupabaseUser();
+        const { data: photoRows, error: photoLookupError } = await supabase
+          .from("travel_photos")
+          .select("storage_path")
+          .eq("trip_id", id);
+        if (photoLookupError) throw new Error(photoLookupError.message);
         const { error: requestError } = await supabase
           .from("trips")
           .delete()
           .eq("id", id);
         if (requestError) throw new Error(requestError.message);
-        if (existing?.coverStoragePath) {
-          await supabase.storage
+        const storagePaths = Array.from(
+          new Set([
+            ...(photoRows ?? []).map((photo) => photo.storage_path),
+            existing?.coverStoragePath,
+          ].filter((path): path is string => Boolean(path))),
+        );
+        if (storagePaths.length > 0) {
+          const { error: storageError } = await supabase.storage
             .from("travel-photos")
-            .remove([existing.coverStoragePath]);
+            .remove(storagePaths);
+          if (storageError) {
+            console.error("Reisebilder konnten nach dem Löschen nicht vollständig entfernt werden.", storageError);
+          }
         }
       }
 

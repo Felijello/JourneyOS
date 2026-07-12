@@ -28,7 +28,7 @@ export type PlaceType =
   | "airport"
   | "other";
 
-export type TripStatus = "idea" | "planned" | "booked" | "completed" | "cancelled";
+export type TripStatus = "idea" | "planned" | "booked" | "active" | "completed" | "cancelled";
 
 export type TripDayItemType =
   | "hotel"

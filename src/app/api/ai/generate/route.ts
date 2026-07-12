@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { fetchWithTimeout, isRateLimited, readJsonBody } from "@/lib/server/request-guard";
+import { getApiUser } from "@/lib/server/api-auth";
 
 type AiRequest = {
   prompt?: string;
   context?: string;
 };
 
-const models = ["gemini-2.5-flash", "gemini-2.0-flash"];
+const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
 
 export async function POST(request: Request) {
+  const user = await getApiUser(request);
+  if (!user) return NextResponse.json({ error: "Bitte melde dich erneut an." }, { status: 401 });
   if (isRateLimited(request, "ai-generate", 8)) {
     return NextResponse.json(
       { error: "Zu viele AI-Anfragen. Bitte warte kurz." },

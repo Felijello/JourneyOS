@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { CalendarDays, CloudSun, Loader2, Search, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { authenticatedFetch } from "@/lib/services/authenticated-fetch";
 
 type TravelSearchResult = {
   destination?: {
@@ -41,11 +42,20 @@ export function TravelSearch({ className }: { className?: string }) {
     setResult(null);
 
     try {
-      const response = await fetch("/api/travel-search", {
+      let response: Response;
+      try {
+        response = await authenticatedFetch("/api/travel-search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: trimmedQuery }),
+        });
+      } catch {
+        response = await fetch("/api/travel-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: trimmedQuery }),
-      });
+        });
+      }
       const data = (await response.json()) as TravelSearchResult;
       setResult(
         response.ok

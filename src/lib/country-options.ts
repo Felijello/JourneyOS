@@ -108,6 +108,7 @@ export const tripStatuses: Array<{ value: TripStatus; label: string }> = [
   { value: "idea", label: "Idee" },
   { value: "planned", label: "Geplant" },
   { value: "booked", label: "Gebucht" },
+  { value: "active", label: "Aktuell" },
   { value: "completed", label: "Abgeschlossen" },
   { value: "cancelled", label: "Abgesagt" },
 ];

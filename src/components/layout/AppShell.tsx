@@ -24,6 +24,7 @@ import {
   useSocial,
 } from "@/components/providers/SocialProvider";
 import { TravelSearch } from "@/components/travel/TravelSearch";
+import { NotificationMenu } from "@/components/notifications/NotificationMenu";
 import { LinkButton } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
@@ -167,6 +168,7 @@ function TopBar() {
         <TravelSearch className="hidden max-w-xl lg:block" />
 
         <div className="flex items-center gap-2">
+          <NotificationMenu />
           <ProfileShortcut />
           <LinkButton href="/countries/new">
             <Plus aria-hidden="true" size={17} />

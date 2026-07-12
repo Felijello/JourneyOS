@@ -42,6 +42,7 @@ type SocialContextValue = {
   uploadTripPhotos: (tripId: string, files: File[]) => Promise<void>;
   deleteTripPhoto: (photo: TripGalleryPhoto) => Promise<void>;
   replaceTripPhoto: (photo: TripGalleryPhoto, file: File) => Promise<void>;
+  setTripPhotoAsCover: (photo: TripGalleryPhoto) => Promise<void>;
 };
 
 type ProfileRow = {
@@ -105,6 +106,7 @@ type GalleryPhotoRow = {
   storage_path: string;
   caption: string;
   position: number;
+  is_cover?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -255,7 +257,7 @@ function safeFileName(name: string) {
 }
 
 export function SocialProvider({ children }: { children: ReactNode }) {
-  const { isDemoMode, supabaseStatus, trips } = useTravel();
+  const { isDemoMode, supabaseStatus, trips, refreshCountries } = useTravel();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   const [follows, setFollows] = useState<Follow[]>([]);
@@ -408,6 +410,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
         signedUrl: photoUrls[index],
         caption: row.caption,
         position: row.position,
+        isCover: row.is_cover ?? false,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       })),
@@ -600,6 +603,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
           signedUrl: URL.createObjectURL(file),
           caption: file.name,
           position,
+          isCover: false,
           createdAt: now,
           updatedAt: now,
         } satisfies TripGalleryPhoto;
@@ -680,6 +684,23 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     await refreshSocial();
   }, [isDemoMode, refreshSocial]);
 
+  const setTripPhotoAsCover = useCallback(async (photo: TripGalleryPhoto) => {
+    if (isDemoMode) {
+      setTravelPhotos((items) => items.map((item) => ({ ...item, isCover: item.id === photo.id })));
+      return;
+    }
+    if (!supabase) return;
+    const { data } = await supabase.auth.getUser();
+    if (!data.user || data.user.id !== photo.userId) throw new Error("Du kannst nur eigene Fotos als Cover verwenden.");
+    const { error: clearError } = await supabase.from("travel_photos").update({ is_cover: false }).eq("trip_id", photo.tripId);
+    if (clearError) throw new Error(clearError.message);
+    const { error: coverError } = await supabase.from("travel_photos").update({ is_cover: true }).eq("id", photo.id);
+    if (coverError) throw new Error(coverError.message);
+    const { error: tripError } = await supabase.from("trips").update({ cover_storage_path: photo.storagePath, cover_photo_url: null }).eq("id", photo.tripId);
+    if (tripError) throw new Error(tripError.message);
+    await Promise.all([refreshSocial(), refreshCountries()]);
+  }, [isDemoMode, refreshCountries, refreshSocial]);
+
   const value = useMemo<SocialContextValue>(() => ({
     currentProfile,
     profiles,
@@ -701,11 +722,12 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     uploadTripPhotos,
     deleteTripPhoto,
     replaceTripPhoto,
+    setTripPhotoAsCover,
   }), [
     currentProfile, profiles, follows, publications, likes, travelPhotos, settings,
     isLoading, isAdmin, error, refreshSocial, saveProfile, uploadAvatar,
     followProfile, unfollowProfile, toggleTripLike, updateSettings,
-    uploadTripPhotos, deleteTripPhoto, replaceTripPhoto,
+    uploadTripPhotos, deleteTripPhoto, replaceTripPhoto, setTripPhotoAsCover,
   ]);
 
   return <SocialContext.Provider value={value}>{children}</SocialContext.Provider>;

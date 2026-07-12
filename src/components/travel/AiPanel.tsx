@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useTravel } from "@/components/providers/CountryProvider";
 import { Button } from "@/components/ui/Button";
 import { getMissingAiKeyMessage } from "@/lib/services/ai";
+import { authenticatedFetch } from "@/lib/services/authenticated-fetch";
 import type { EntityType } from "@/types/country";
 
 const aiActions = [
@@ -60,7 +61,7 @@ export function AiPanel({
     setError(null);
 
     try {
-      const response = await fetch("/api/ai/generate", {
+      const response = await authenticatedFetch("/api/ai/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, context }),

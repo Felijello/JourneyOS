@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { RouteCoordinate } from "@/lib/services/routing";
 import { fetchWithTimeout, isRateLimited, readJsonBody } from "@/lib/server/request-guard";
+import { getApiUser } from "@/lib/server/api-auth";
 
 type DirectionsRequest = {
   coordinates?: RouteCoordinate[];
@@ -13,6 +14,8 @@ const allowedProfiles = new Set([
   "cycling-regular",
 ]);
 export async function POST(request: Request) {
+  const user = await getApiUser(request);
+  if (!user) return NextResponse.json({ error: "Bitte melde dich erneut an." }, { status: 401 });
   const apiKey = process.env.OPENROUTESERVICE_API_KEY;
 
   if (isRateLimited(request, "routing", 12)) {

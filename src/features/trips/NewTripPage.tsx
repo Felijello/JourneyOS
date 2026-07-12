@@ -1,11 +1,8 @@
 "use client";
 
-import { TripForm } from "@/components/trips/TripForm";
-import { useTravel } from "@/components/providers/CountryProvider";
+import { TripWizard } from "@/components/trips/TripWizard";
 
 export function NewTripPage() {
-  const { countries, createTrip } = useTravel();
-
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <div>
@@ -16,7 +13,7 @@ export function NewTripPage() {
           Erst die Idee festhalten. Details planst du danach.
         </p>
       </div>
-      <TripForm countries={countries} onSubmit={createTrip} />
+      <TripWizard />
     </div>
   );
 }

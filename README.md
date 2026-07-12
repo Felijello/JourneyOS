@@ -19,6 +19,19 @@ Profilen, Follows, öffentlichen Reisetagebüchern, Likes und Reisegalerien.
 - Cover-Upload mit Fokuspunkt, Zoom und sicherem Storage-Pfad
 - Private Planungsdaten bleiben getrennt von veröffentlichten Reisedaten
 
+## JourneyOS UX V2
+
+- Mobile Reisenerstellung in fünf klaren Schritten
+- Automatisch gespeicherte und wiederherstellbare Reiseentwürfe
+- Bewusste Sichtbarkeitswahl; nur abgeschlossene Reisen können öffentlich sein
+- Reisedetail mit URL-basierten Bereichen für Übersicht, Tagesplan, Fotos und Packliste
+- Persönliches Dashboard mit nächster Reise, Countdown und offenen Punkten
+- Komprimierte Reisefotos, Coverauswahl und barrierearme Vollbildgalerie
+- Länderhistorie mit Reisezeitstrahl, Aufenthaltsdauer und Herkunft des Besuchsstatus
+- Echte In-App-Benachrichtigungen für Follows und Likes
+- Datenexport und sichere Account-Löschung in den Einstellungen
+- Serverseitig abgesicherte AI- und Routing-Endpunkte
+
 Die UI ist Deutsch. Code, Dateien, Variablen und Datenbankfelder sind Englisch.
 
 ## Tech Stack
@@ -49,6 +62,8 @@ Checks:
 npm run lint
 npx tsc --noEmit
 npm run build
+npm test
+npm run test:e2e
 ```
 
 ## .env.local
@@ -63,6 +78,10 @@ OPENROUTESERVICE_API_KEY=
 NEXT_PUBLIC_MAPTILER_KEY=
 GEMINI_API_KEY=
 RESEND_API_KEY=
+NEXT_PUBLIC_SENTRY_DSN=
+SENTRY_AUTH_TOKEN=
+SENTRY_ORG=
+SENTRY_PROJECT=
 ```
 
 Sicherheit:
@@ -83,6 +102,9 @@ Sicherheit:
    Follows, Likes, Community-Reisen, Einstellungen und die sichere Reisegalerie.
    `improve_travel_system` ergänzt strukturierte Ziele, Mehrländer-Reisen,
    Cover-Fokus sowie die abgesicherte Besuchs- und Veröffentlichungslogik.
+   `ux_v2_foundations` ergänzt Entwürfe, reisebezogene Orte,
+   Benachrichtigungen, Galerie-Cover, sichere Benachrichtigungstrigger und
+   die serverseitige Account-Löschung.
 5. Authentication -> Providers -> Email und Passwort aktivieren.
 6. Authentication -> URL Configuration setzen:
      - Site URL: `https://journey-os-wine.vercel.app`

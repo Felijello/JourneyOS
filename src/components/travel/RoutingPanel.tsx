@@ -10,6 +10,7 @@ import {
   type RouteCoordinate,
 } from "@/lib/services/routing";
 import type { Place } from "@/types/country";
+import { authenticatedFetch } from "@/lib/services/authenticated-fetch";
 
 type RoutingResponse = {
   routeGeojson?: {
@@ -53,7 +54,7 @@ export function RoutingPanel({
       .slice(0, 5)
       .map((place) => [place.longitude as number, place.latitude as number]);
 
-    const response = await fetch("/api/routing/directions", {
+    const response = await authenticatedFetch("/api/routing/directions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ coordinates, profile }),

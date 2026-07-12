@@ -80,6 +80,7 @@ export type TripGalleryPhoto = {
   signedUrl?: string | null;
   caption: string;
   position: number;
+  isCover: boolean;
   createdAt: string;
   updatedAt: string;
 };

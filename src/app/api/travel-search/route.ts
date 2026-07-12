@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchWithTimeout, isRateLimited, readJsonBody } from "@/lib/server/request-guard";
+import { getApiUser } from "@/lib/server/api-auth";
 
 type SearchBody = {
   query?: string;
@@ -123,7 +124,7 @@ async function generateDescription({
     `Gefundenes Ziel: ${destination.name}, ${destination.country ?? "Land unbekannt"}`,
   ].join("\n");
 
-  for (const model of ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]) {
+  for (const model of ["gemini-2.5-flash", "gemini-2.5-flash-lite"]) {
     const response = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
@@ -171,9 +172,10 @@ export async function POST(request: Request) {
   }
 
   try {
+    const user = await getApiUser(request);
     const destination = await geocodeDestination(query);
     const weather = await getWeather(destination);
-    const aiDescription = await generateDescription({ destination, query });
+    const aiDescription = user ? await generateDescription({ destination, query }) : null;
     const temperature = weather.current?.temperature_2m;
     const wind = weather.current?.wind_speed_10m;
     const precipitation = weather.current?.precipitation;

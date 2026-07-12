@@ -12,6 +12,8 @@ import {
   Mail,
   ShieldCheck,
   UserRound,
+  Download,
+  UserX,
 } from "lucide-react";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import { useSocial } from "@/components/providers/SocialProvider";
@@ -21,8 +23,10 @@ import { supabase } from "@/lib/supabase/client";
 
 export function SettingsPage() {
   const router = useRouter();
-  const { currentProfile, settings, updateSettings, isAdmin } = useSocial();
-  const { capabilityStatus, isDemoMode, leaveDemoMode } = useTravel();
+  const social = useSocial();
+  const { currentProfile, settings, updateSettings, isAdmin } = social;
+  const travel = useTravel();
+  const { capabilityStatus, isDemoMode, leaveDemoMode } = travel;
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
 
@@ -47,6 +51,69 @@ export function SettingsPage() {
     setMessage(error ? "Der Link konnte gerade nicht gesendet werden." : "Reset-Link ist unterwegs.");
   }
 
+  function exportData() {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      profile: currentProfile,
+      countries: travel.countries,
+      places: travel.places,
+      trips: travel.trips,
+      tripDays: travel.tripDays,
+      tripDayItems: travel.tripDayItems,
+      packingItems: travel.packingItems,
+      savedLinks: travel.savedLinks,
+      routes: travel.routes,
+      photos: travel.photos,
+      gallery: social.travelPhotos.map((photo) => ({ ...photo, signedUrl: undefined })),
+      follows: social.follows,
+      likes: social.likes,
+      settings,
+    };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `journeyos-export-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function listStorageFiles(bucket: string, path: string): Promise<string[]> {
+    if (!supabase) return [];
+    const { data, error } = await supabase.storage.from(bucket).list(path, { limit: 1000 });
+    if (error) throw error;
+    const files: string[] = [];
+    for (const item of data ?? []) {
+      const child = path ? `${path}/${item.name}` : item.name;
+      if (item.id) files.push(child);
+      else files.push(...await listStorageFiles(bucket, child));
+    }
+    return files;
+  }
+
+  async function deleteAccount() {
+    if (!supabase || isDemoMode) return;
+    const confirmation = window.prompt("Diese Aktion löscht Konto, Reisen und Fotos dauerhaft. Tippe LÖSCHEN zum Bestätigen.");
+    if (confirmation !== "LÖSCHEN") return;
+    setMessage("Dein Konto wird gelöscht...");
+    try {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error("Bitte melde dich erneut an.");
+      for (const bucket of ["travel-photos", "profile-images"]) {
+        const files = await listStorageFiles(bucket, data.user.id);
+        if (files.length) {
+          const { error: removeError } = await supabase.storage.from(bucket).remove(files);
+          if (removeError) throw removeError;
+        }
+      }
+      const { error: deleteError } = await supabase.rpc("delete_current_user");
+      if (deleteError) throw deleteError;
+      await supabase.auth.signOut();
+      router.replace("/login");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Das Konto konnte nicht vollständig gelöscht werden.");
+    }
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <div>
@@ -57,6 +124,10 @@ export function SettingsPage() {
 
       <SettingsSection icon={<UserRound size={20} />} subtitle="So sehen dich andere Reisende." title="Profil bearbeiten">
         <ProfileForm />
+      </SettingsSection>
+
+      <SettingsSection icon={<Download size={20} />} subtitle="Deine Daten gehören dir." title="Daten & Konto">
+        <div className="flex flex-col gap-3 sm:flex-row"><Button onClick={exportData} variant="secondary"><Download size={17} />Daten exportieren</Button>{!isDemoMode ? <Button onClick={() => void deleteAccount()} variant="danger"><UserX size={17} />Account löschen</Button> : null}</div>
       </SettingsSection>
 
       <SettingsSection icon={<Bell size={20} />} subtitle="Du entscheidest, wofür JourneyOS sich meldet." title="Benachrichtigungen">

@@ -7,7 +7,11 @@ import {
   Globe2,
   Plane,
   Star,
+  PackageCheck,
+  ImageOff,
 } from "lucide-react";
+import Link from "next/link";
+import { CoverImage } from "@/components/trips/CoverImage";
 import { CountryCard } from "@/components/countries/CountryCard";
 import { WorldMap } from "@/components/map/WorldMap";
 import { useTravel } from "@/components/providers/CountryProvider";
@@ -61,6 +65,8 @@ function StatCard({
 export function DashboardPage() {
   const {
     countries,
+    trips,
+    packingItems,
     isLoading,
     error,
   } = useTravel();
@@ -73,6 +79,14 @@ export function DashboardPage() {
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     )
     .slice(0, 4);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const nextTrip = trips
+    .filter((trip) => trip.startDate && trip.status !== "completed" && trip.status !== "cancelled" && new Date(`${trip.startDate}T00:00:00`) >= today)
+    .toSorted((a, b) => new Date(a.startDate!).getTime() - new Date(b.startDate!).getTime())[0];
+  const daysUntil = nextTrip?.startDate ? Math.ceil((new Date(`${nextTrip.startDate}T00:00:00`).getTime() - today.getTime()) / 86_400_000) : null;
+  const openPacking = nextTrip ? packingItems.filter((item) => item.tripId === nextTrip.id && !item.isPacked) : [];
+  const incompleteTrips = trips.filter((trip) => !trip.coverPhotoUrl || !trip.startDate || !trip.endDate);
 
   return (
     <div className="space-y-7">
@@ -96,6 +110,21 @@ export function DashboardPage() {
           </LinkButton>
         </div>
       </section>
+
+      {nextTrip ? (
+        <Link className="group relative block min-h-72 overflow-hidden rounded-lg border border-slate-200 bg-slate-950 shadow-card" href={`/trips/${nextTrip.id}?tab=overview`}>
+          {nextTrip.coverPhotoUrl ? <div className="absolute inset-0 overflow-hidden"><CoverImage positionX={nextTrip.coverPositionX} positionY={nextTrip.coverPositionY} src={nextTrip.coverPhotoUrl} zoom={nextTrip.coverZoom} /></div> : <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-cyan-400 to-emerald-300" />}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/55 to-transparent" />
+          <div className="relative flex min-h-72 max-w-2xl flex-col justify-end p-6 text-white sm:p-8">
+            <p className="text-sm font-semibold text-blue-200">Deine nächste Reise</p>
+            <h2 className="mt-2 text-3xl font-semibold sm:text-4xl">{daysUntil === 0 ? "Heute geht's los" : `Noch ${daysUntil} ${daysUntil === 1 ? "Tag" : "Tage"} bis ${nextTrip.destinationCity || nextTrip.destinationCountryName || nextTrip.title}`}</h2>
+            <p className="mt-3 text-sm text-white/80">{nextTrip.title} · {nextTrip.startDate ? new Intl.DateTimeFormat("de-AT", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(`${nextTrip.startDate}T00:00:00`)) : "Datum offen"}</p>
+            <span className="mt-5 inline-flex w-fit items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-950">Reise öffnen<ArrowRight size={16} /></span>
+          </div>
+        </Link>
+      ) : <EmptyState actionHref="/trips/new" actionLabel="Reise planen" description="Sobald du eine Reise mit Datum anlegst, erscheint hier dein persönlicher Countdown." title="Dein nächstes Abenteuer wartet" />}
+
+      {(openPacking.length || incompleteTrips.length) ? <section><h2 className="text-xl font-semibold text-slate-950">Für dich als Nächstes</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{openPacking.length ? <Link className="journey-card flex items-center gap-4 p-5" href={`/trips/${nextTrip!.id}?tab=packing`}><span className="grid size-11 place-items-center rounded-lg bg-amber-50 text-amber-600"><PackageCheck /></span><div><p className="font-semibold text-slate-900">{openPacking.length} offene Packlistenpunkte</p><p className="mt-1 text-sm text-slate-500">Kurz abhaken, bevor es losgeht.</p></div></Link> : null}{incompleteTrips.length ? <Link className="journey-card flex items-center gap-4 p-5" href={`/trips/${incompleteTrips[0].id}?tab=overview`}><span className="grid size-11 place-items-center rounded-lg bg-blue-50 text-blue-600"><ImageOff /></span><div><p className="font-semibold text-slate-900">{incompleteTrips.length} unvollständige {incompleteTrips.length === 1 ? "Reise" : "Reisen"}</p><p className="mt-1 text-sm text-slate-500">Cover oder Reisedaten ergänzen.</p></div></Link> : null}</div></section> : null}
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <StatCard

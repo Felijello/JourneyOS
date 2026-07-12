@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { CalendarDays, Pencil, Trash2 } from "lucide-react";
+import { CalendarDays, ChevronRight, MapPin, Pencil, Route, Trash2 } from "lucide-react";
 import { CountryForm } from "@/components/countries/CountryForm";
 import { WorldMap } from "@/components/map/WorldMap";
 import { PlaceCard } from "@/components/places/PlaceCard";
@@ -46,6 +46,18 @@ export function CountryDetailPage() {
         (linked) => linked.countryCode === country?.countryCode,
       ),
   );
+  const completedCountryTrips = countryTrips.filter((trip) => trip.status === "completed");
+  const datedTrips = completedCountryTrips
+    .filter((trip) => trip.startDate)
+    .toSorted((a, b) => (b.startDate ?? "").localeCompare(a.startDate ?? ""));
+  const totalDays = completedCountryTrips.reduce((sum, trip) => {
+    if (!trip.startDate || !trip.endDate) return sum;
+    const start = new Date(`${trip.startDate}T00:00:00`);
+    const end = new Date(`${trip.endDate}T00:00:00`);
+    return sum + Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
+  }, 0);
+  const firstVisit = datedTrips.at(-1)?.startDate ?? country?.visitedFrom;
+  const lastVisit = datedTrips[0]?.endDate ?? datedTrips[0]?.startDate ?? country?.visitedTo;
 
   if (isLoading) {
     return (
@@ -146,7 +158,7 @@ export function CountryDetailPage() {
             </p>
           ) : null}
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-4">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl bg-slate-50 p-4">
               <p className="text-sm text-slate-500">Bewertung</p>
               <p className="mt-2 text-2xl font-semibold">{country.personalRating}/10</p>
@@ -162,12 +174,17 @@ export function CountryDetailPage() {
               <p className="mt-2 text-2xl font-semibold">{countryTrips.length}</p>
             </div>
             <div className="rounded-2xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Aktualisiert</p>
+              <p className="text-sm text-slate-500">Aufenthalt</p>
               <p className="mt-2 flex items-center gap-2 text-base font-semibold">
                 <CalendarDays aria-hidden="true" size={17} />
-                {formatDate(country.updatedAt)}
+                {totalDays > 0 ? `${totalDays} Tage` : "Noch offen"}
               </p>
             </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-600">
+            <span className="rounded-full bg-slate-100 px-3 py-1.5">{country.manualStatus === "visited" ? "Von dir als besucht markiert" : country.completedTripCount > 0 ? "Durch abgeschlossene Reise erkannt" : "Persönlicher Länderstatus"}</span>
+            {firstVisit ? <span className="rounded-full bg-slate-100 px-3 py-1.5">Erster Besuch: {formatDate(firstVisit)}</span> : null}
+            {lastVisit ? <span className="rounded-full bg-slate-100 px-3 py-1.5">Letzter Besuch: {formatDate(lastVisit)}</span> : null}
           </div>
         </div>
       </section>
@@ -192,6 +209,14 @@ export function CountryDetailPage() {
           <h2 className="text-xl font-semibold text-slate-950">Kartenposition</h2>
           <WorldMap countries={[country]} places={countryPlaces} />
         </section>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-full bg-blue-50 text-blue-600"><Route size={19} /></span>
+          <div><h2 className="text-xl font-semibold text-slate-950">Deine Reisen</h2><p className="text-sm text-slate-500">Alle Aufenthalte in {country.name}, neueste zuerst.</p></div>
+        </div>
+        {countryTrips.length ? <ol className="mt-6 space-y-3">{countryTrips.toSorted((a, b) => (b.startDate ?? b.createdAt).localeCompare(a.startDate ?? a.createdAt)).map((trip) => <li key={trip.id}><a className="flex min-h-16 items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 transition hover:border-blue-200 hover:bg-blue-50/50" href={`/trips/${trip.id}?tab=overview`}><MapPin className="shrink-0 text-blue-600" size={18} /><span className="min-w-0 flex-1"><strong className="block truncate text-sm text-slate-950">{trip.title}</strong><span className="mt-0.5 block text-xs text-slate-500">{trip.startDate ? formatDate(trip.startDate) : "Datum offen"}{trip.endDate ? ` – ${formatDate(trip.endDate)}` : ""} · {trip.status === "completed" ? "Abgeschlossen" : trip.status === "active" ? "Aktuell" : "Geplant"}</span></span><ChevronRight className="shrink-0 text-slate-400" size={18} /></a></li>)}</ol> : <div className="mt-6 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">Noch keine Reise mit diesem Land verknüpft.</div>}
       </section>
 
       <section className="space-y-4">
